@@ -1,7 +1,7 @@
 # FoodScope: See Beyond the Plate
 
 ## Idea principal
-Crear una herramienta de sugerencias de recetas con un input visual de predicción de ingredientes, con llamadas a una BBDD de recetas con detalles de estas e información sobre sus ingredientes. Incluiría información nutricional para complementar al sistema de recomendación.
+Crear una herramienta de sugerencias de recetas con un input visual de predicción de ingredientes, con llamadas a una BBDD de recetas con detalles de estas e información sobre sus ingredientes. Incluiría información nutricional para complementar al sistema de recomendación y credenciales de usuario para crear un sistema más completo colaborativo.
 
 ## Estructura del Proyecto
 
@@ -31,7 +31,7 @@ A partir de aquí se calcularían índices de salud para cada receta, el cual no
 ### 3. Cargar Datos
 Crearemos una BBDD en PostgreSQL, donde cargaremos toda la información de cada tabla que hayamos creado. 
 
-# Recipe Database Design
+### Diseño de la base de datos
 
 ```mermaid
 erDiagram
@@ -110,5 +110,5 @@ erDiagram
     USERS ||--o{ COMMENTS : writes
     RECIPES ||--o{ RECIPE_TAGS : tagged_as
     TAGS ||--o{ RECIPE_TAGS : includes
-    ```
+```
 
