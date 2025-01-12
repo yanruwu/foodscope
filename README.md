@@ -24,7 +24,7 @@ Estos dos métodos permitirán obtener datos más diversos de diferentes fuentes
 - A partir de la información del webscraping, normalizar y limpiar el contenido, estructurarlos en dataframes e igualar la información con la obtenida en APIs.
 
 - **Traducción y Normalización**:
-    - Traducir recetas e ingredientes al idioma estándar definido para la base de datos (por ejemplo, español o inglés).
+    - Traducir recetas e ingredientes al idioma estándar definido para la base de datos (por ejemplo, español o inglés), usando paquetes como `deep_translator`.
     - Unificar formatos y nomenclaturas para ingredientes, cantidades y unidades, asegurando consistencia en los datos procesados.
 
 Con ambas fuentes se obtendrán los diferentes ingredientes disponibles en las recetas, los cuales comformarán su propio dataframe, donde incluiremos:
