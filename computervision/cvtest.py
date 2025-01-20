@@ -111,8 +111,7 @@ while cap.isOpened():
 
             # Guardar la imagen anotada (opcional)
             output_path = os.path.join(BASE_DIR, "computervision/live_annotated_image.jpg")
-            annotated_bgr = cv2.cvtColor(annotated_frame, cv2.COLOR_RGB2BGR)  # Convertir a BGR
-            cv2.imwrite(output_path, annotated_bgr)
+            cv2.imwrite(output_path, annotated_frame)
             print(f"Predicción completada. Frases detectadas: {phrases}")
 
             # Cambiar al estado de "Mostrar Imagen Anotada"
