@@ -49,7 +49,8 @@ chicken . beef . pork . egg . ham . tofu . milk . yogurt . cheese . butter . can
 crushed tomato . canned tomato . honey . jam . peanut butter . coffee . tea . chocolate . 
 rice . lentil . chickpeas . black bean . bell pepper . sausage . 
 '''
-BOX_TRESHOLD = 0.35
+# TEXT_PROMPT = 'person . chair . laptop .'
+BOX_TRESHOLD = 0.30
 TEXT_TRESHOLD = 0.25
 
 # Cargar modelo en CPU (en este caso no tengo GPU)
@@ -58,7 +59,7 @@ model = load_model(config_path, weights_path, device=device)
 
 # Inicializar la cámara
 # cap = cv2.VideoCapture(0)
-cap = cv2.VideoCapture('http://192.168.1.146:4747/video')
+cap = cv2.VideoCapture('http://172.26.1.12:4747/video')
 cv2.namedWindow("Live Feed")
 
 print("Presiona 'p' para realizar una predicción. Presiona 'ESC' para salir.")
@@ -109,7 +110,7 @@ while cap.isOpened():
             # Anotar el frame
             annotated_frame = annotate(image_source=frame_source, boxes=boxes, logits=logits, phrases=phrases)
 
-            # Guardar la imagen anotada (opcional)
+            # Guardar la imagen anotada
             output_path = os.path.join(BASE_DIR, "computervision/live_annotated_image.jpg")
             cv2.imwrite(output_path, annotated_frame)
             print(f"Predicción completada. Frases detectadas: {phrases}")
