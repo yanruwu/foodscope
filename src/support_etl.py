@@ -2,6 +2,7 @@ import requests
 import os
 import pandas as pd
 from tqdm import tqdm
+import time
 
 import dotenv
 import sys
@@ -237,4 +238,102 @@ def insert_ingredient_recipe(conn, recipe_id, ingredient_id, amount):
             (recipe_id, ingredient_id, amount)
         )
         conn.commit()
+
+
+def process_recipes(file_path, leftoff_path, db_connection_func):
+    """
+    Procesa las recetas desde un archivo JSONL y almacena los datos procesados en una base de datos.
+
+    Parameters:
+    - file_path (str): Ruta al archivo JSONL que contiene las recetas.
+    - leftoff_path (str): Ruta al archivo JSON para almacenar la posición de progreso.
+    - db_connection_func (function): Función para conectar a la base de datos.
+
+    Returns:
+    - None
+    """
+    # Cargar datos
+    dap = pd.read_json(file_path, lines=True)
+
+    with open(leftoff_path, 'r', encoding='utf-8') as file:
+        dap_leftoff = json.load(file)
+
+    print("Translating ingredients...")
+    for i in range(1 + dap_leftoff["Position"], len(dap)):
+        ingredients = dap["ingredientes"].loc[i]
+        resultados = [
+            " ".join(filter(None, [str(c) if c is not None else None, u, n]))
+            for n, c, u in zip(ingredients['nombre'], ingredients['cantidad'], ingredients['unidad'])
+        ]
+        en_ingredients = [translate_es_en(e) for e in resultados]
+        
+        serving = dap["raciones"].loc[i]
+
+        print("Getting nutrients...")
+        nut_info, recipe_sum = get_nutrients(en_ingredients, int(serving))
+
+        if isinstance(nut_info, int) and nut_info != 555:
+            print("Error:", nut_info)
+            break  # Detenemos el proceso si hay un error distinto de 555
+        elif isinstance(nut_info, int) and nut_info == 555:
+            json.dump(dap_leftoff, open(leftoff_path, "w"))  # Guardar la posición actual
+            continue  # No guardamos la receta si no se pudo parsear
+
+        dap_leftoff["Position"] = i
+
+        filtered_nut_info = nut_info[nut_info["Weight (g)"] > 0].copy()  # Filtrar ingredientes con peso > 0
+        columns_to_normalize = filtered_nut_info.columns[2:]  # Columnas para normalizar
+
+        # Normalizar los registros para que sean por cada 100 g
+        filtered_nut_info[columns_to_normalize] = (
+            filtered_nut_info[columns_to_normalize]
+            .div(filtered_nut_info["Weight (g)"], axis=0)*100
+        )
+
+        print("Connecting to database...")
+        conn = db_connection_func()
+        recipe_id = insert_recipe(
+            conn, 
+            dap["titulo"].loc[i], 
+            translate_es_en(dap["titulo"].loc[i]), 
+            dap["titulo"].loc[i], 
+            dap["url"].loc[i],
+            recipe_sum.get("weight"), 
+            recipe_sum, 
+            int(serving)
+        )
+
+        for j in filtered_nut_info.index:
+            ingredient_id = get_or_create_ingredient(
+                conn, 
+                filtered_nut_info.loc[j].get("Ingredient").lower(), 
+                filtered_nut_info.loc[j], 
+                filtered_nut_info.loc[j].get("Ingredient").lower(), 
+                translate_en_es(filtered_nut_info.loc[j].get("Ingredient")).lower()
+            )
+            insert_ingredient_recipe(
+                conn, 
+                recipe_id, 
+                ingredient_id, 
+                float(filtered_nut_info.loc[j].get("Weight (g)"))
+            )
+
+        json.dump(dap_leftoff, open(leftoff_path, "w"))  # Guardar la posición actual
+        time.sleep(2)
+
+    print("End")
+
+
+def insert_steps_from_jsonl(conn, jsonl, index):
+    with conn.cursor() as cur:
+        cur.execute("SELECT id FROM recipes WHERE url = %s;", (jsonl.loc[index, "url"],))
+        try:
+            recipe_id = cur.fetchone()[0]
+        except:
+            recipe_id = None
+        print(recipe_id)
+        if recipe_id:
+            steps_es = jsonl.loc[index, "instrucciones"]
+            steps_en = translate_es_en(steps_es)
+            cur.execute("INSERT INTO steps (recipe_id, description, description_es, description_en) VALUES (%s, %s);", (recipe_id, steps_es, steps_en, steps_es))
 
