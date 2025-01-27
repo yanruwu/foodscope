@@ -4,6 +4,8 @@ import pandas as pd
 from tqdm import tqdm
 import time
 
+from psycopg2.errors import UniqueViolation
+
 import dotenv
 import sys
 sys.path.append("..")
@@ -152,6 +154,7 @@ def generate_ingredient_id(name):
     Returns:
         int: ID único generado como hash.
     """
+    name = name.strip()
     return int(hashlib.md5(name.encode()).hexdigest()[:8], 16)
 
 
@@ -240,6 +243,27 @@ def insert_ingredient_recipe(conn, recipe_id, ingredient_id, amount):
         conn.commit()
 
 
+
+def insert_steps_from_jsonl(conn, jsonl, index):
+    with conn.cursor() as cur:
+        cur.execute("SELECT id FROM recipes WHERE url = %s;", (jsonl.loc[index, "url"],))
+        try:
+            recipe_id = cur.fetchone()[0]
+        except:
+            recipe_id = None
+        # print(recipe_id)
+        if recipe_id:
+            try:
+                steps_es = jsonl.loc[index, "instrucciones"]
+                steps_en = translate_es_en(steps_es)
+                print(index, steps_es)
+                cur.execute("INSERT INTO steps (recipe_id, description, description_es, description_en) VALUES (%s, %s, %s, %s);", (recipe_id, steps_es, steps_en, steps_es))
+                conn.commit()
+            except UniqueViolation:
+                print("Ya existe")
+            except Exception as e:
+                print(e)
+
 def process_recipes(file_path, leftoff_path, db_connection_func):
     """
     Procesa las recetas desde un archivo JSONL y almacena los datos procesados en una base de datos.
@@ -318,22 +342,8 @@ def process_recipes(file_path, leftoff_path, db_connection_func):
                 float(filtered_nut_info.loc[j].get("Weight (g)"))
             )
 
+
         json.dump(dap_leftoff, open(leftoff_path, "w"))  # Guardar la posición actual
         time.sleep(2)
 
     print("End")
-
-
-def insert_steps_from_jsonl(conn, jsonl, index):
-    with conn.cursor() as cur:
-        cur.execute("SELECT id FROM recipes WHERE url = %s;", (jsonl.loc[index, "url"],))
-        try:
-            recipe_id = cur.fetchone()[0]
-        except:
-            recipe_id = None
-        print(recipe_id)
-        if recipe_id:
-            steps_es = jsonl.loc[index, "instrucciones"]
-            steps_en = translate_es_en(steps_es)
-            cur.execute("INSERT INTO steps (recipe_id, description, description_es, description_en) VALUES (%s, %s);", (recipe_id, steps_es, steps_en, steps_es))
-

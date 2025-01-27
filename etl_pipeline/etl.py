@@ -1,6 +1,7 @@
 import sys
 import os
 import pandas as pd
+from tqdm import tqdm
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(project_root)
@@ -35,4 +36,9 @@ def main():
         print(f"Error durante la ejecución del proceso ETL: {e}")
 
 if __name__ == "__main__":
-    main()
+    # main()
+    dap = pd.read_json(jsonl_file_path, lines = True)
+    for i in tqdm(range(len(dap))):
+        # insert_steps_from_jsonl(conn = connect_db(), jsonl = dap, index = i)
+        print(i)
+
