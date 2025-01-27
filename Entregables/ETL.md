@@ -1,129 +1,112 @@
-# ETL
-## 1. Extracción de los datos
-Para la extracción de los datos para este proyecto, se construyeron dos scrapeadores usando [Scrapy](https://scrapy.org/), uno para cada web de recetas seleccionada. En este caso las páginas son:
-- allrecipes.com para recetas en inglés.
-- directoalpaladar.com para recetas en español.
+# INFORME DEL PIPELINE ETL
 
-Se contruyeron dos spiders que almacenarán la información de cada una de las páginas:
+A continuación, se presenta una descripción detallada del _pipeline_ ETL (Extract, Transform, Load) utilizado para obtener, procesar y cargar datos de recetas culinarias provenientes de **AllRecipes** y **Directo al Paladar**, hasta almacenarlos en una base de datos relacional. El flujo se divide en **tres** pasos principales:
 
-```py
-## ALLRECIPES
-# Obtenemos la ruta absoluta del directorio donde está el script
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+---
 
-# Ruta a la carpeta de datos dentro del mismo directorio del script
-data_dir = os.path.join(BASE_DIR, "data")
+## 1. EXTRACCIÓN
 
-# Creamos la carpeta "data" si no existe
-if not os.path.exists(data_dir):
-    os.makedirs(data_dir)
+Para la **Extracción** de datos se han utilizado spiders de **Scrapy** que rastrean los sitios web de _allrecipes.com_ y _directoalpaladar.com_, leyendo su **sitemap** y guardando la información en archivos `.jsonl`. A continuación, se describen los aspectos clave de cada spider:
 
-# Luego, ya usamos esa carpeta para leer/escribir el archivo
-jsonl_path = os.path.join(data_dir, "allrecipes.jsonl")
+### 1.1. Spider para AllRecipes
 
-urls = set(pd.read_json(jsonl_path, lines = True)["url"])
+- **Tecnología**: Se emplea la clase `SitemapSpider` de Scrapy para recorrer el sitemap principal, que se indica en la variable `sitemap_urls`.
+- **Filtrado de URLs**: Solo se procesan aquellos enlaces que contengan `/recipe/`.
+- **Estructura de datos**:
 
-class AllRecipesSpider(SitemapSpider):
-    name = 'allrecipes'
-    allowed_domains = ['allrecipes.com']
-    sitemap_urls = ['https://www.allrecipes.com/sitemap_1.xml']
+  - URL de la receta
+  - Título (obtenido a través de selectores XPath)
+  - Ingredientes (nombres, cantidades, unidades), localizados mediante selectores CSS
+  - Raciones
+  - Instrucciones para preparar la receta
 
-    custom_settings = {
-        "FEEDS": {
-            "allrecipes.jsonl": {"format": "jsonl", "encoding": "utf-8"}
-        }
-    }
-    def sitemap_filter(self, entries):
-        entries = list(entries)
-        random.shuffle(entries)
-        for entry in entries:
-            if '/recipe/' in entry['loc']:
-                if entry['loc'] in urls:
-                    continue
-                else:
-                    yield entry
+El spider escribe la información recopilada en un archivo `allrecipes.jsonl`, evitando duplicados gracias a un conjunto (set) que almacena las URL ya procesadas.
 
-    def parse(self, response):
-        
-        ingredients = response.css('#mm-recipes-structured-ingredients_1-0 > ul > li')
-        quantities = []
-        units = []
-        ing_names = []
-        for ingredient in ingredients:
-            quantities.append(ingredient.css('span[data-ingredient-quantity="true"]::text').get())
-            units.append(ingredient.css('span[data-ingredient-unit="true"]::text').get())
-            ing_names.append(ingredient.css('span[data-ingredient-name="true"]::text').get())
-        ingredient_dict = {
-            "nombre": ing_names,
-            "cantidad": quantities,
-            "unidad": units
-        }
-        servings = response.xpath(
-        '//div[@class="mm-recipes-details__label" and normalize-space(text())="Servings:"]'
-        '/following-sibling::div[@class="mm-recipes-details__value"]/text()').get()
+### 1.2. Spider para Directo al Paladar
 
-        yield {
-            'url': response.url,
-            'titulo': response.xpath('//*[@id="article-header--recipe_1-0"]/h1/text()').get().strip(),
-            'ingredientes': ingredient_dict,
-            'sevings' : int(servings),
-            'instrucciones': "".join(response.css('#mm-recipes-steps__content_1-0 li p *::text').getall())        }
+- **Tecnología**: También basada en `SitemapSpider`, apuntando a un sitemap que agrupa todas las recetas.
+- **Filtrado de URLs**: Se desordena aleatoriamente la lista del sitemap y se descartan las URL que ya figuran en el archivo de resultados (para evitar duplicados).
+- **Estructura de datos**:
 
-```
+  - URL de la receta
+  - Título
+  - Ingredientes (con nombre, cantidad y unidad)
+  - Raciones
+  - Instrucciones
 
-```py
-## DAP
-urls = set(pd.read_json(r"C:\Proyecto-Final\recetas_scrapper\recetas_scrapper\recetas_dap.jsonl", lines = True)["url"])
+La información se almacena en el archivo `dap.jsonl`. Igual que en el spider anterior, se supervisa la lista de URLs procesadas a fin de no sobreescribir recetas ya existentes.
 
-class DapSpider(SitemapSpider):
-    name = 'recetas_sitemap'
-    allowed_domains = ['directoalpaladar.com']
-    sitemap_urls = ['https://www.directoalpaladar.com/recipe/sitemap.xml']
+---
 
-    custom_settings = {
-        "FEEDS": {
-            "dap.jsonl": {"format": "jsonl", "encoding": "utf-8"}
-        }
-    }
+## 2. TRANSFORMACIÓN
 
+Una vez que se tienen los datos de las recetas en archivos `.jsonl`, el siguiente paso es **transformarlos** para:
 
-    def sitemap_filter(self, entries):
-        entries = list(entries)
-        random.shuffle(entries) 
-        for entry in entries:
-            if entry["loc"] in urls:
-                continue
-            else:
-                yield entry
-    
-    def parse(self, response):
+- **Traducir** ingredientes de español a inglés (o viceversa) usando DeepTranslator.  
+- **Obtener** información nutricional de cada ingrediente mediante la API de **Edamam**.  
+- **Normalizar** valores (por ejemplo, calcular nutrientes por cada 100 g).  
+- **Enriquecer** la receta con etiquetas de salud (_health labels_).
 
-        ingredient_container = response.css("ul.asset-recipe-list")[0]
-        
-        ingredientes_nombres = [
-            e.css("span.asset-recipe-ingr-name span::text").get().strip()
-            for e in ingredient_container.css("li")
-        ]
-        cantidades_unidades = [
-            (
-                float(a.css("span.asset-recipe-ingr-amount::text").get().strip()),
-                a.css("span.asset-recipe-ingr-amount abbr::text").get()
-            )
-            if a.css("span.asset-recipe-ingr-amount") else None
-            for a in ingredient_container.css("li")
-        ]
-        ingredient_dict = {
-            "nombre": ingredientes_nombres,
-            "cantidad": [i[0] if i else None for i in cantidades_unidades],
-            "unidad": [i[1] if i else None for i in cantidades_unidades]
-        }
-        
-        yield {
-            'url': response.url,
-            'titulo': response.css('h1.post-title::text').get().strip(),
-            'ingredientes': ingredient_dict,
-            'raciones' :  int(re.search(r'\d+', response.css('div.asset-recipe-yield::text').get().strip()).group(0)),
-            'instrucciones': "".join(response.css('div.asset-recipe-steps p *::text').getall()),
-            'dificultad' : response.css('div.asset-recipe-difficulty::text').get().replace("Dificultad: ", "").strip(),
-        }
-```
+Uno de los principales problemas encontrados en este paso vendrían de la **normalización de valores**, ya que las recetas son redactadas por muchas personas diferentes, cada una usando unidades de medidas diferentes y los nombres de los ingredientes podían variar aún refiriéndose al mismo elemento. 
+
+Todo esto se pudo solucionar gracias al uso de la API de **EDAMAM**, la cual, a parte de proporcioinar información nutricional, también incluye un motor **NLP** por detrás, el cual detecta ingredientes y unidades de medida a partir de texto, devolviendo así siempre un mismo nombre de ingrediente y la posibilidad de generalizar a 100 g.
+
+Las funciones principales para estos propósitos se encuentran en un módulo de soporte (_support_etl.py_).
+
+### 2.1. Traducción de Ingredientes
+
+Para ajustarse a los requerimientos de la API de Edamam, se traducen los ingredientes al inglés usando la librería DeepTranslator. De esta manera, la API reconoce correctamente los ingredientes y devuelve datos nutricionales precisos.
+
+### 2.2. Obtención de Datos Nutricionales
+
+Se realiza una petición a la API de Edamam, que provee:
+
+- Peso (g)
+- Calorías (kcal)
+- Proteínas (g)
+- Grasas (g)
+- Carbohidratos (g)
+- Azúcares (g)
+- Fibra (g)
+- Etiquetas de Salud (por ejemplo, _vegan_, _gluten-free_, _low-carb_, etc.)
+
+El resultado incluye información específica de cada ingrediente y un resumen general de la receta, con valores totales y etiquetas de salud.
+
+### 2.3. Normalización y Ensamblaje
+
+Antes de cargar los datos en la base de datos, se filtran y se normalizan los valores nutricionales para estandarizar las cantidades en 100 g de ingrediente. De este modo, se facilita la comparación entre distintos productos alimentarios. Al final de este paso, se cuenta con:
+
+- Un listado final de ingredientes con sus nutrientes por 100 g.  
+- Un dictamen completo de la receta (nombre, URL, nutrientes totales por porción, raciones y etiquetas de salud).
+
+---
+
+## 3. CARGA
+
+La fase de **Carga** inserta toda la información previamente transformada en **Supabase**, que funciona como una base de datos PostgreSQL a la cual se conecta usando la librería `psycopg2`. 
+
+Inicialmente se usó una base de datos **local** PostgreSQL, y para realizar la migración a Supabase se empleó **pg_dump** para generar un script ``backup.sql`` que contuviera toda la información de la base de datos local y **psql** para conectar con la base de datos de Supabase mediante la _connection string_ y ejecutar el script SQL. Luego se modificaron las credenciales de conexión de psycopg2 para insertar directamente a la base de datos de Supabase.
+
+Estas son las etapas clave:
+
+### 3.1. Inserción de Recetas
+
+Se crea un registro en la tabla `recipes` con:
+
+- Nombre de la receta
+- URL
+- Tamaño total de la receta en gramos
+- Nutrientes totales ajustados por número de raciones
+- Cantidad de raciones
+
+### 3.2. Creación de Ingredientes y Relaciones
+
+Para evitar duplicados, el sistema verifica si un ingrediente ya existe en la tabla `ingredients`. Si no, lo crea registrando sus nutrientes (por 100 g) y crea un id único para este usando ``hashlib``. Luego, en la tabla `recipe_ingredients`, se guarda la relación entre cada receta y sus ingredientes, junto a la cantidad usada.
+
+### 3.3. Etiquetas de Salud
+
+Cada etiqueta de salud se almacena en la tabla `tags`. Si la etiqueta no existe, se inserta; de lo contrario, se reutiliza su registro. Posteriormente, la relación con la receta queda definida en la tabla intermedia `recipe_tags`, lo que permite clasificar las preparaciones según atributos como _vegan, vegetarian, gluten-free_, entre otros.
+
+La estructura de la base de datos es la siguiente:
+
+![alt text](..\img\mermaid_diag.png)

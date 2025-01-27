@@ -3,7 +3,8 @@ import os
 import pandas as pd
 from tqdm import tqdm
 import time
-
+import json  
+import psycopg2
 from psycopg2.errors import UniqueViolation
 
 import dotenv
@@ -124,16 +125,14 @@ def get_nutrients(ing_list, serving_size):
     else:
         print("Error:", response.status_code, response.json())
         return response.status_code, response.status_code
-    
-import psycopg2
-import json
+
 
 # Configuración de conexión
 DB_PARAMS = {
-    "dbname": "FoodScope",
+    "dbname": "postgres",
     "user": "postgres",
-    "password": "admin",
-    "host": "localhost",  # Cambia según tu entorno
+    "password": os.getenv("db_pass"),
+    "host": "db.zrhsejedrpoqcyfvfzsr.supabase.co",
     "port": 5432
 }
 
@@ -264,6 +263,28 @@ def insert_steps_from_jsonl(conn, jsonl, index):
             except Exception as e:
                 print(e)
 
+def insert_tags(conn, recipe_id, health_labels):
+            with conn.cursor() as cur:
+                for label in health_labels:
+                    label = label.lower().replace("_", " ")
+                    cur.execute("SELECT id FROM tags WHERE name = %s;", (label,))
+                    result = cur.fetchone()
+                    
+                    if result:
+                        tag_id = result[0]
+                    else:
+                        cur.execute(
+                            "INSERT INTO tags (name, name_en, name_es) VALUES (%s, %s, %s) RETURNING id;",
+                            (label, label, translate_en_es(label).lower())
+                        )
+                        tag_id = cur.fetchone()[0]
+                        conn.commit()
+                    cur.execute(
+                        "INSERT INTO recipe_tags (recipe_id, tag_id) VALUES (%s, %s);",
+                        (recipe_id, tag_id)
+                    )
+                    conn.commit()
+
 def process_recipes(file_path, leftoff_path, db_connection_func):
     """
     Procesa las recetas desde un archivo JSONL y almacena los datos procesados en una base de datos.
@@ -326,6 +347,8 @@ def process_recipes(file_path, leftoff_path, db_connection_func):
             recipe_sum, 
             int(serving)
         )
+        
+        insert_tags(conn, recipe_id=recipe_id, health_labels=recipe_sum.get("HealthLabels"))
 
         for j in filtered_nut_info.index:
             ingredient_id = get_or_create_ingredient(
@@ -346,4 +369,3 @@ def process_recipes(file_path, leftoff_path, db_connection_func):
         json.dump(dap_leftoff, open(leftoff_path, "w"))  # Guardar la posición actual
         time.sleep(2)
 
-    print("End")

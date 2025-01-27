@@ -2,14 +2,20 @@ import sys
 import os
 import pandas as pd
 from tqdm import tqdm
+from supabase import create_client, Client
+import dotenv
+
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(project_root)
 
+dotenv.load_dotenv()
+
+
 from src.support_etl import *
 
 # Configuración de rutas de archivos
-jsonl_file_path = "recetas_scrapper/dap.jsonl"  # Ruta al archivo JSONL con las recetas
+jsonl_file_path = "recetas_scrapper/recetas_scrapper/spiders/data/dap.jsonl"  # Ruta al archivo JSONL con las recetas
 leftoff_file_path = "dap_leftoff.json"  # Archivo para guardar el progreso del ETL
 
 # Crear archivo de progreso si no existe
@@ -36,9 +42,5 @@ def main():
         print(f"Error durante la ejecución del proceso ETL: {e}")
 
 if __name__ == "__main__":
-    # main()
-    dap = pd.read_json(jsonl_file_path, lines = True)
-    for i in tqdm(range(len(dap))):
-        # insert_steps_from_jsonl(conn = connect_db(), jsonl = dap, index = i)
-        print(i)
+    main()
 
