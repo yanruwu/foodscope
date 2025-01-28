@@ -255,11 +255,12 @@ def insert_steps_from_jsonl(conn, jsonl, index):
             try:
                 steps_es = jsonl.loc[index, "instrucciones"]
                 steps_en = translate_es_en(steps_es)
-                print(index, steps_es)
+                # print(index, steps_es)
                 cur.execute("INSERT INTO steps (recipe_id, description, description_es, description_en) VALUES (%s, %s, %s, %s);", (recipe_id, steps_es, steps_en, steps_es))
                 conn.commit()
             except UniqueViolation:
-                print("Ya existe")
+                # print("Ya existe")
+                pass
             except Exception as e:
                 print(e)
 
@@ -349,7 +350,7 @@ def process_recipes(file_path, leftoff_path, db_connection_func):
         )
         
         insert_tags(conn, recipe_id=recipe_id, health_labels=recipe_sum.get("HealthLabels"))
-
+        insert_steps_from_jsonl(conn = conn, jsonl = dap, index = i)
         for j in filtered_nut_info.index:
             ingredient_id = get_or_create_ingredient(
                 conn, 

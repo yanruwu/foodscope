@@ -1,8 +1,5 @@
 import sys
 import os
-import pandas as pd
-from tqdm import tqdm
-from supabase import create_client, Client
 import dotenv
 
 
@@ -38,9 +35,8 @@ def main():
         )
         
         print("Proceso ETL completado con éxito.")
-    except Exception as e:
+    except Exception as e: 
         print(f"Error durante la ejecución del proceso ETL: {e}")
 
 if __name__ == "__main__":
     main()
-
