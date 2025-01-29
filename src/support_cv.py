@@ -1,8 +1,11 @@
 import os
 import cv2
 import torch
-import numpy as np
 from PIL import Image
+import sys
+import numpy as np
+
+sys.path.append(r'GroundingDINO')
 
 # GroundingDINO imports
 from groundingdino.util.inference import load_model, predict, annotate, load_image
@@ -37,6 +40,32 @@ def transform_image(frame):
     image_transformed, _ = transform(image_source, None)
 
     return frame_rgb, image_transformed
+
+def transform_pil_image(image_pil):
+    """
+    Transforma una imagen PIL a formato de entrada del modelo GroundingDINO.
+    - Aplica las transformaciones de GroundingDINO (normalización, resize, etc.)
+    
+    Args:
+        image_pil (PIL.Image.Image): Imagen en formato PIL.
+
+    Returns:
+        image_rgb (np.ndarray): Imagen en formato RGB (para anotaciones posteriores).
+        image_transformed (torch.Tensor): Imagen lista para ingresar al modelo.
+    """
+    transform = T.Compose([
+        T.RandomResize([800], max_size=1333),
+        T.ToTensor(),
+        T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+    ])
+
+    # Convertir PIL a NumPy array (para anotaciones posteriores)
+    image_rgb = np.array(image_pil)
+
+    # Aplicar las transformaciones
+    image_transformed, _ = transform(image_pil, None)
+
+    return image_rgb, image_transformed
 
 def initialize_model(base_dir):
     """
@@ -73,7 +102,7 @@ def remote_feed():
         strawberry . blueberry . raspberry . blackberry . mango . kiwi . avocado . ginger . parsley . cilantro .
         mint . rosemary . thyme . basil . bay leaf . chili pepper . mushroom . green bean . pea . brussels sprout .
         kale . cabbage . celery . asparagus . leek . eggplant . radish . pumpkin . butternut squash .
-        okra . artichoke . corn . apricot . fig . date . papaya . lime . cherry . coconut . melon .
+        okra . artichoke . corn . fig . date . papaya . lime . cherry . coconut . melon .
         cantaloupe . peanut . almond . walnut . chia seed . sunflower seed . sesame seed . bread . pasta .
         chicken . beef . pork . egg . ham . tofu . milk . yogurt . cheese . butter . canned tuna . canned salmon .
         crushed tomato . canned tomato . honey . jam . peanut butter . coffee . tea . chocolate . 
@@ -162,29 +191,22 @@ def image_feed(img):
 
     # Parámetros para la detección
     TEXT_PROMPT =  '''
-        potato . onion . garlic clove . carrot . tomato . lettuce . spinach . cucumber . zucchini . broccoli .
-        cauliflower . apple . banana . orange . lemon . grape . pear . peach . plum . watermelon . pineapple .
-        strawberry . blueberry . raspberry . blackberry . mango . kiwi . avocado . ginger . parsley . cilantro .
-        mint . rosemary . thyme . basil . bay leaf . chili pepper . mushroom . green bean . pea . brussels sprout .
-        kale . cabbage . celery . asparagus . leek . eggplant . radish . pumpkin . butternut squash .
-        okra . artichoke . corn . apricot . fig . date . papaya . lime . cherry . coconut . melon .
-        cantaloupe . peanut . almond . walnut . chia seed . sunflower seed . sesame seed . bread . pasta .
-        chicken . beef . pork . egg . ham . tofu . milk . yogurt . cheese . butter . canned tuna . canned salmon .
-        crushed tomato . canned tomato . honey . jam . peanut butter . coffee . tea . chocolate . 
-        rice . lentil . chickpeas . black bean . bell pepper . sausage . 
+        potato , onion , garlic , carrot , tomato , lettuce , spinach , cucumber , zucchini , broccoli ,
+        cauliflower , apple , banana , orange , lemon , grape , pear , peach , plum , watermelon , pineapple ,
+        strawberry , blueberry , raspberry , blackberry , mango , kiwi , avocado , ginger , parsley , cilantro ,
+        mint , rosemary , thyme , basil , bay leaf , chili pepper , mushroom , green bean , pea , brussels sprout ,
+        kale , cabbage , celery , asparagus , leek , eggplant , radish , pumpkin , butternut squash ,
+        okra , artichoke , corn , fig , date , papaya , lime , cherry , coconut , melon ,
+        cantaloupe , peanut , almond , walnut , chia seed , sunflower seed , sesame seed , bread , pasta ,
+        chicken , beef , pork , egg , ham , tofu , milk , yogurt , cheese , butter , canned tuna , canned salmon ,
+        crushed tomato , canned tomato , honey , jam , peanut butter , coffee , tea , chocolate , 
+        rice , lentil , chickpeas , black bean , bell pepper , sausage , 
         '''
     BOX_THRESHOLD = 0.30
     TEXT_THRESHOLD = 0.25
 
 
-    # Indica al usuario cómo interactuar
-    print("Presiona 'p' para realizar una predicción. Presiona 'ESC' para salir.")
-
-    annotated_frame = None
-
-    # Capturar el frame actual y realizar la predicción
-    print("Realizando predicción...")
-    frame_source, captured_frame = load_image(img)
+    frame_source, captured_frame = transform_image(img)
 
     # Realizar predicción con el modelo
     boxes, logits, phrases = predict(
@@ -209,3 +231,4 @@ def image_feed(img):
     cv2.imwrite(output_path, annotated_frame)
     
     print(f"Predicción completada. Frases detectadas: {phrases}")
+    return phrases

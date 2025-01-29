@@ -1,6 +1,4 @@
-import os
-import sys
-import dotenv
+import inflect
 from supabase import create_client
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
@@ -14,14 +12,14 @@ def fetch_recipe_ingredients(supabase):
     """Obtiene los datos de la tabla recipe_ingredients desde Supabase."""
     response = supabase.table('recipe_ingredients').select(
         'recipe_id',
-        'ingredients(name)'
+        'ingredients(name_norm)'
     ).execute()
 
     if not response.data:
         raise ValueError("No se encontraron resultados en recipe_ingredients")
 
     df = pd.DataFrame(response.data)
-    df["ingredient_name"] = df["ingredients"].apply(lambda x: x["name"] if isinstance(x, dict) else None)
+    df["ingredient_name"] = df["ingredients"].apply(lambda x: x["name_norm"] if isinstance(x, dict) else None)
     df.drop(columns=["ingredients"], inplace=True)
 
     return df
@@ -41,40 +39,6 @@ def recommend_recipes(vectorizer, X, user_ingredients):
     print([user_ingredients])
     similaridad = cosine_similarity(user_vec, X)
     return similaridad[0]
-
-def fetch_recipe_urls(supabase, recipe_ids):
-    """Obtiene las URLs de las recetas recomendadas desde Supabase."""
-    response = supabase.table("recipes").select("url").in_("id", recipe_ids).execute()
-    if not response.data:
-        return []
-    return [item["url"] for item in response.data]
-
-def filter_by_percentage(df, user_ingredients, threshold=0.7):
-    """
-    Filtra recetas que contengan al menos un porcentaje (threshold) de los ingredientes proporcionados.
-    
-    Args:
-        df (pd.DataFrame): DataFrame con las recetas y sus ingredientes.
-        user_ingredients (str): Lista de ingredientes del usuario como string.
-        threshold (float): Porcentaje mínimo de coincidencia requerido (0.7 = 70%).
-    
-    Returns:
-        pd.DataFrame: DataFrame filtrado con recetas que cumplen el umbral.
-    """
-    user_ingredient_set = set(user_ingredients.split())
-    total_user_ingredients = len(user_ingredient_set)
-    
-    def match_percentage(ingredients):
-        recipe_set = set(ingredients.split())
-        matches = len(user_ingredient_set & recipe_set)  # Intersección
-        return matches / total_user_ingredients
-    
-    # Calcular el porcentaje de coincidencia para cada receta
-    df['match_percentage'] = df['ingredient_name'].apply(match_percentage)
-    
-    # Filtrar recetas que cumplen con el umbral
-    filtered_df = df[df['match_percentage'] >= threshold].copy()
-    return filtered_df
 
 
 def boost_similarity_with_percentage(df, user_ingredients, similarities, alpha=1.0):
@@ -125,7 +89,7 @@ def filter_health_labels(supabase, health_labels):
     """
     tag_ids = []
     for label in health_labels:
-        tag_id = supabase.table('tags').select('id').eq('name', label).execute().data
+        tag_id = supabase.table('tags').select('id').eq('name_norm', label).execute().data
         tag_ids.append(tag_id[0]["id"])
     response = [e["recipe_id"] for e in supabase.table('recipe_tags').select('recipe_id').in_('tag_id', tag_ids).execute().data]
     return response
@@ -153,7 +117,7 @@ def filter_calories(supabase, min_calories, max_calories):
     return response
 
 
-def get_recommendations(supabase,user_ingredients):
+def get_recommendations(supabase,raw_user_ingredients):
         # Obtener y procesar datos de ingredientes
         df = fetch_recipe_ingredients(supabase)
         recipe_ingredients = preprocess_ingredients(df)
@@ -162,6 +126,9 @@ def get_recommendations(supabase,user_ingredients):
         vectorizer, X = vectorize_ingredients(recipe_ingredients)
 
         # Calcular similitud y recomendar
+        p = inflect.engine()
+        user_ingredients = [p.singular_noun(ing) if p.singular_noun(ing) else ing for ing in raw_user_ingredients.split()]
+        user_ingredients = " ".join(user_ingredients)
         similaridad = recommend_recipes(vectorizer, X, user_ingredients)
         
         # Ajustar las similitudes con el boost

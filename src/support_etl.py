@@ -1,7 +1,7 @@
 import requests
 import os
 import pandas as pd
-from tqdm import tqdm
+import inflect
 import time
 import json  
 import dotenv
@@ -131,6 +131,7 @@ def get_or_create_ingredient(supabase: Client, ingredient_name: str, nutrients: 
     """
     # 1. Verificar si ya existe en la tabla
     existing = supabase.table("ingredients").select("id").eq("name", ingredient_name).execute()
+    p = inflect.engine()
     if existing.data and len(existing.data) > 0:
         # Ya existe
         return existing.data[0]["id"]
@@ -147,7 +148,8 @@ def get_or_create_ingredient(supabase: Client, ingredient_name: str, nutrients: 
             "sugars": float(nutrients.get("sugar", 0.0)),
             "fiber": float(nutrients.get("fiber", 0.0)),
             "name_en": name_en,
-            "name_es": name_es
+            "name_es": name_es,
+            "name_norm" : p.singular_noun(ingredient_name) if p.singular_noun(ingredient_name) else ingredient_name
         }
         supabase.table("ingredients").insert(insert_data).execute()
         return ingredient_id
