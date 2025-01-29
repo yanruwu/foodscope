@@ -31,7 +31,6 @@ def main():
         process_recipes(
             file_path=jsonl_file_path,
             leftoff_path=leftoff_file_path,
-            db_connection_func=connect_db
         )
         
         print("Proceso ETL completado con éxito.")

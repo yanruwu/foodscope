@@ -4,15 +4,13 @@ import pandas as pd
 from tqdm import tqdm
 import time
 import json  
-import psycopg2
-from psycopg2.errors import UniqueViolation
-
 import dotenv
 import sys
 sys.path.append("..")
 dotenv.load_dotenv()
 
 from deep_translator import GoogleTranslator
+from supabase import create_client, Client
 
 def translate_es_en(text):
     return GoogleTranslator(source='es', target='en').translate(text)
@@ -25,35 +23,17 @@ def get_nutrients(ing_list, serving_size):
     Obtiene datos nutricionales de una lista de ingredientes usando la API de EDAMAM.
 
     Args:
-        ing_list (list): Lista de ingredientes en formato de texto.
-        serving_size (int): Tamaño de porción para ajustar los valores nutricionales.
+        ing_list (list): Lista de ingredientes en formato de texto (en inglés).
+        serving_size (int): Tamaño de porción para ajustar valores nutricionales.
 
     Returns:
-        tuple: Una tupla con dos elementos:
-            - pd.DataFrame: DataFrame con los nutrientes de cada ingrediente, incluyendo:
-                - 'Ingredient' (str): Nombre del ingrediente.
-                - 'Weight (g)' (float): Peso en gramos del ingrediente ajustado al tamaño de porción.
-                - 'Calories (kcal)' (float): Calorías por porción.
-                - 'Protein (g)' (float): Proteína por porción.
-                - 'Fat (g)' (float): Grasas por porción.
-                - 'Carbohydrates (g)' (float): Carbohidratos por porción.
-                - 'Sugar (g)' (float): Azúcar por porción.
-                - 'Fiber (g)' (float): Fibra por porción.
-            - dict: Diccionario con los nutrientes totales y etiquetas de salud en formato:
-                - {"Energy (kcal)": ..., "Protein (g)": ..., "HealthLabels": [...]}
-
-    Raises:
-        HTTPError: Si hay un problema en la solicitud a la API de EDAMAM.
+        tuple: (pd.DataFrame, dict)
+            - DataFrame: detalle de nutrientes por ingrediente.
+            - dict: resumen de nutrientes totales y etiquetas de salud.
     """
     url = "https://api.edamam.com/api/nutrition-details"
-
-    headers = {
-        "Content-Type": "application/json"
-    }
-
-    data = {
-        "ingr": ing_list
-    }
+    headers = { "Content-Type": "application/json" }
+    data = { "ingr": ing_list }
 
     response = requests.post(
         url,
@@ -78,7 +58,7 @@ def get_nutrients(ing_list, serving_size):
             weight = ingredient_data.get("weight", 0)
             total_weight = nutrition_data.get("totalWeight", 0)
 
-            # Extraer nutrientes ajustados por tamaño de porción
+            # Extraer nutrientes
             calories = nutrients.get("ENERC_KCAL", {}).get("quantity", 0)
             protein = nutrients.get("PROCNT", {}).get("quantity", 0)
             fat = nutrients.get("FAT", {}).get("quantity", 0)
@@ -109,264 +89,262 @@ def get_nutrients(ing_list, serving_size):
             "FIBTG": "fiber"
         }
 
-        # Crear el diccionario con los nutrientes totales y sus etiquetas
+        # Crear el diccionario con los nutrientes totales
         recipe_summary = {}
         for key, label in relevant_nutrients.items():
             nutrient_data = nutrition_data.get("totalNutrients", {}).get(key, {})
             recipe_summary[label] = nutrient_data.get("quantity", 0)
-        
-        # Agregar etiquetas de salud al diccionario
+
+        # Agregar etiquetas de salud
         recipe_summary["HealthLabels"] = nutrition_data.get("healthLabels", [])
         recipe_summary["weight"] = total_weight
         recipe_summary["Serving Size"] = serving_size
 
         return nutrients_df, recipe_summary
-
     else:
         print("Error:", response.status_code, response.json())
         return response.status_code, response.status_code
 
 
-# Configuración de conexión
-DB_PARAMS = {
-    "dbname": "postgres",
-    "user": "postgres",
-    "password": os.getenv("db_pass"),
-    "host": "db.zrhsejedrpoqcyfvfzsr.supabase.co",
-    "port": 5432
-}
-
-# Conectar a la base de datos
-def connect_db():
-    conn = psycopg2.connect(**DB_PARAMS)
-    return conn
+# Supabase client global (o puedes instanciarlo donde más te convenga)
+def get_supabase_client() -> Client:
+    """
+    Retorna la instancia de Supabase con las credenciales de entorno.
+    """
+    url = "https://zrhsejedrpoqcyfvfzsr.supabase.co"
+    key = os.getenv("db_API_pass")
+    return create_client(url, key)
 
 import hashlib
 
-def generate_ingredient_id(name):
+def generate_ingredient_id(name: str) -> int:
     """
-    Genera un ID único para un ingrediente basado en su nombre.
-
-    Args:
-        name (str): Nombre del ingrediente.
-
-    Returns:
-        int: ID único generado como hash.
+    Genera un ID único para un ingrediente basado en su nombre utilizando MD5.
     """
     name = name.strip()
     return int(hashlib.md5(name.encode()).hexdigest()[:8], 16)
 
 
-def get_or_create_ingredient(conn, ingredient_name, nutrients, name_en, name_es):
+def get_or_create_ingredient(supabase: Client, ingredient_name: str, nutrients: dict, name_en: str, name_es: str) -> int:
     """
-    Busca un ingrediente por nombre o lo inserta si no existe.
-
-    Args:
-        conn: Conexión a la base de datos.
-        ingredient_name (str): Nombre del ingrediente.
-        nutrients (dict): Nutrientes del ingrediente (por 100 g): 'calories', 'proteins', 'carbs', 'fats'.
-
-    Returns:
-        int: ID del ingrediente.
+    Busca un ingrediente por nombre o lo inserta si no existe, retornando su ID.
     """
-    with conn.cursor() as cur:
-        # Buscar el ingrediente por nombre
-        cur.execute("SELECT id FROM ingredients WHERE name = %s;", (ingredient_name,))
-        result = cur.fetchone()
+    # 1. Verificar si ya existe en la tabla
+    existing = supabase.table("ingredients").select("id").eq("name", ingredient_name).execute()
+    if existing.data and len(existing.data) > 0:
+        # Ya existe
+        return existing.data[0]["id"]
+    else:
+        # 2. Insertar el nuevo ingrediente
+        ingredient_id = generate_ingredient_id(ingredient_name)
+        insert_data = {
+            "id": ingredient_id,
+            "name": ingredient_name,
+            "calories": float(nutrients.get("calories", 0.0)),
+            "proteins": float(nutrients.get("protein", 0.0)),
+            "carbs": float(nutrients.get("carbs", 0.0)),
+            "fats": float(nutrients.get("fat", 0.0)),
+            "sugars": float(nutrients.get("sugar", 0.0)),
+            "fiber": float(nutrients.get("fiber", 0.0)),
+            "name_en": name_en,
+            "name_es": name_es
+        }
+        supabase.table("ingredients").insert(insert_data).execute()
+        return ingredient_id
 
-        if result:
-            # Si existe, devolver el ID
-            return result[0]
+
+def insert_recipe(
+    supabase: Client,
+    recipe_name: str,
+    name_en: str,
+    name_es: str,
+    recipe_url: str,
+    weight: float,
+    nutrients: dict,
+    serving_size: int
+) -> int:
+    """
+    Inserta una nueva receta en la tabla 'recipes' y retorna su ID.
+    """
+    # Insert
+    insert_data = {
+        "name": recipe_name,
+        "name_en": name_en,
+        "name_es": name_es,
+        "url": recipe_url,
+        "weight": weight,
+        "calories": float(nutrients.get("calories", 0)) / serving_size,
+        "proteins": float(nutrients.get("protein", 0)) / serving_size,
+        "carbs": float(nutrients.get("carbs", 0)) / serving_size,
+        "fats": float(nutrients.get("fat", 0)) / serving_size,
+        "sugars": float(nutrients.get("sugar", 0)) / serving_size,
+        "fiber": float(nutrients.get("fiber", 0)) / serving_size,
+        "servings": serving_size
+    }
+    response = supabase.table("recipes").insert(insert_data).execute()
+
+    # Supabase no siempre retorna el registro insertado (dependiendo de la configuración),
+    # si tu tabla 'recipes' tiene la columna 'url' única, podemos hacer un select:
+    if response.data and len(response.data) > 0:
+        # Si configuraste return=representation (o similar) en el Policy, data debería traer el objeto insertado
+        return response.data[0]["id"]
+    else:
+        # Si no vino en data, hacemos un select por url (asumiendo que es única):
+        result = supabase.table("recipes").select("id").eq("url", recipe_url).execute()
+        if result.data and len(result.data) > 0:
+            return result.data[0]["id"]
+        return None  # Manejo de error en caso de no encontrar
+
+
+def insert_ingredient_recipe(supabase: Client, recipe_id: int, ingredient_id: int, amount: float):
+    """
+    Inserta relación receta-ingrediente en la tabla 'recipe_ingredients'.
+    """
+    supabase.table("recipe_ingredients").insert({
+        "recipe_id": recipe_id,
+        "ingredient_id": ingredient_id,
+        "amount": amount
+    }).execute()
+
+
+def insert_steps_from_jsonl(supabase: Client, jsonl: pd.DataFrame, index: int):
+    """
+    Inserta los pasos de elaboración en la tabla 'steps'.
+    """
+    recipe_url = jsonl.loc[index, "url"]
+
+    # Recuperar ID de la receta por URL (asumiendo que es única)
+    recipe_found = supabase.table("recipes").select("id").eq("url", recipe_url).execute()
+    if not recipe_found.data:
+        return  # Si no existe la receta, no insertamos pasos
+
+    recipe_id = recipe_found.data[0]["id"]
+    steps_es = jsonl.loc[index, "instrucciones"]
+    steps_en = translate_es_en(steps_es)  # se traduce a inglés
+
+    supabase.table("steps").insert({
+        "recipe_id": recipe_id,
+        "description": steps_es,       # descripción original
+        "description_es": steps_es,    # redundante: texto en español
+        "description_en": steps_en     # texto en inglés
+    }).execute()
+
+
+def insert_tags(supabase: Client, recipe_id: int, health_labels: list):
+    """
+    Inserta etiquetas (tags) en la tabla 'tags' y su relación en 'recipe_tags'.
+    """
+    for label in health_labels:
+        label_lower = label.lower().replace("_", " ")
+
+        # 1. Buscar tag
+        existing_tag = supabase.table("tags").select("id").eq("name", label_lower).execute()
+        if existing_tag.data and len(existing_tag.data) > 0:
+            tag_id = existing_tag.data[0]["id"]
         else:
-            # Generar un nuevo ID para el ingrediente
-            ingredient_id = generate_ingredient_id(ingredient_name)
-            
-            # Insertar el nuevo ingrediente
-            cur.execute(
-                """
-                INSERT INTO ingredients (id, name, calories, proteins, carbs, fats, sugars, fiber, name_en, name_es)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
-                """,
-                (
-                    ingredient_id,
-                    ingredient_name,
-                    float(nutrients.get("calories", 0.0)),
-                    float(nutrients.get("protein", 0.0)),
-                    float(nutrients.get("carbs", 0.0)),
-                    float(nutrients.get("fat", 0.0)),
-                    float(nutrients.get("sugar", 0.0)),
-                    float(nutrients.get("fiber", 0.0)),
-                    name_en,
-                    name_es
-                )
-            )
-            conn.commit()
-            return ingredient_id
+            # 2. Crear tag
+            new_tag = supabase.table("tags").insert({
+                "name": label_lower,
+                "name_en": label_lower,
+                "name_es": translate_en_es(label_lower).lower()
+            }).execute()
+
+            if new_tag.data and len(new_tag.data) > 0:
+                tag_id = new_tag.data[0]["id"]
+            else:
+                # Si no viene el ID en la respuesta, recuperamos el ID seleccionando por nombre
+                tag_res = supabase.table("tags").select("id").eq("name", label_lower).execute()
+                tag_id = tag_res.data[0]["id"] if tag_res.data else None
         
-def insert_recipe(conn, recipe_name, name_en, name_es, recipe_url, weight, nutrients, serving_size):
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            INSERT INTO recipes (name, name_en, name_es, url, weight, calories, proteins, carbs, fats, sugars, fiber, servings)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            RETURNING id;
-            """,
-            (
-            recipe_name,
-            name_en,
-            name_es,
-            recipe_url,
-            weight,
-            float(nutrients.get("calories", 0))/serving_size,
-            float(nutrients.get("protein", 0))/serving_size,
-            float(nutrients.get("carbs", 0))/serving_size,
-            float(nutrients.get("fat", 0))/serving_size,
-            float(nutrients.get("sugar", 0))/serving_size,
-            float(nutrients.get("fiber", 0))/serving_size,
-            serving_size
-            )
-        )
-        recipe_id = cur.fetchone()[0]
-        conn.commit()
-        return recipe_id
-
-def insert_ingredient_recipe(conn, recipe_id, ingredient_id, amount):
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            INSERT INTO recipe_ingredients (recipe_id, ingredient_id, amount)
-            VALUES (%s, %s, %s);
-            """,
-            (recipe_id, ingredient_id, amount)
-        )
-        conn.commit()
+        # 3. Insertar relación recipe-tag
+        if tag_id:
+            supabase.table("recipe_tags").insert({
+                "recipe_id": recipe_id,
+                "tag_id": tag_id
+            }).execute()
 
 
-
-def insert_steps_from_jsonl(conn, jsonl, index):
-    with conn.cursor() as cur:
-        cur.execute("SELECT id FROM recipes WHERE url = %s;", (jsonl.loc[index, "url"],))
-        try:
-            recipe_id = cur.fetchone()[0]
-        except:
-            recipe_id = None
-        # print(recipe_id)
-        if recipe_id:
-            try:
-                steps_es = jsonl.loc[index, "instrucciones"]
-                steps_en = translate_es_en(steps_es)
-                # print(index, steps_es)
-                cur.execute("INSERT INTO steps (recipe_id, description, description_es, description_en) VALUES (%s, %s, %s, %s);", (recipe_id, steps_es, steps_en, steps_es))
-                conn.commit()
-            except UniqueViolation:
-                # print("Ya existe")
-                pass
-            except Exception as e:
-                print(e)
-
-def insert_tags(conn, recipe_id, health_labels):
-            with conn.cursor() as cur:
-                for label in health_labels:
-                    label = label.lower().replace("_", " ")
-                    cur.execute("SELECT id FROM tags WHERE name = %s;", (label,))
-                    result = cur.fetchone()
-                    
-                    if result:
-                        tag_id = result[0]
-                    else:
-                        cur.execute(
-                            "INSERT INTO tags (name, name_en, name_es) VALUES (%s, %s, %s) RETURNING id;",
-                            (label, label, translate_en_es(label).lower())
-                        )
-                        tag_id = cur.fetchone()[0]
-                        conn.commit()
-                    cur.execute(
-                        "INSERT INTO recipe_tags (recipe_id, tag_id) VALUES (%s, %s);",
-                        (recipe_id, tag_id)
-                    )
-                    conn.commit()
-
-def process_recipes(file_path, leftoff_path, db_connection_func):
+def process_recipes(file_path: str, leftoff_path: str):
     """
-    Procesa las recetas desde un archivo JSONL y almacena los datos procesados en una base de datos.
-
-    Parameters:
-    - file_path (str): Ruta al archivo JSONL que contiene las recetas.
-    - leftoff_path (str): Ruta al archivo JSON para almacenar la posición de progreso.
-    - db_connection_func (function): Función para conectar a la base de datos.
-
-    Returns:
-    - None
+    Procesa recetas desde un archivo JSONL y almacena en Supabase.
+    - file_path: ruta al archivo JSONL con las recetas.
+    - leftoff_path: ruta al archivo JSON con la posición de la última receta procesada.
     """
-    # Cargar datos
+    # 1. Carga de datos
     dap = pd.read_json(file_path, lines=True)
-
     with open(leftoff_path, 'r', encoding='utf-8') as file:
         dap_leftoff = json.load(file)
 
-    print("Translating ingredients...")
+    # 2. Instancia global de Supabase
+    supabase = get_supabase_client()
+
+    # 3. Iterar recetas
     for i in range(1 + dap_leftoff["Position"], len(dap)):
         ingredients = dap["ingredientes"].loc[i]
+        # Unir nombre, cantidad, unidad
         resultados = [
             " ".join(filter(None, [str(c) if c is not None else None, u, n]))
             for n, c, u in zip(ingredients['nombre'], ingredients['cantidad'], ingredients['unidad'])
         ]
-        en_ingredients = [translate_es_en(e) for e in resultados]
-        
+        en_ingredients = [translate_es_en(e) for e in resultados]        
         serving = dap["raciones"].loc[i]
 
-        print("Getting nutrients...")
+        # Obtener info nutricional de la API de Edamam
         nut_info, recipe_sum = get_nutrients(en_ingredients, int(serving))
-
         if isinstance(nut_info, int) and nut_info != 555:
-            print("Error:", nut_info)
-            break  # Detenemos el proceso si hay un error distinto de 555
+            print("Error en la API Edamam:", nut_info)
+            break  # Detenemos si hay error distinto a 555
         elif isinstance(nut_info, int) and nut_info == 555:
-            json.dump(dap_leftoff, open(leftoff_path, "w"))  # Guardar la posición actual
-            continue  # No guardamos la receta si no se pudo parsear
+            # Guardar la posición actual y continuar
+            json.dump(dap_leftoff, open(leftoff_path, "w"))
+            continue
 
+        # Actualizar posición en el archivo de progreso
         dap_leftoff["Position"] = i
 
-        filtered_nut_info = nut_info[nut_info["Weight (g)"] > 0].copy()  # Filtrar ingredientes con peso > 0
-        columns_to_normalize = filtered_nut_info.columns[2:]  # Columnas para normalizar
+        # Filtrar ingredientes con peso > 0
+        filtered_nut_info = nut_info[nut_info["Weight (g)"] > 0].copy()
+        columns_to_normalize = filtered_nut_info.columns[2:]  # desde 'calories' en adelante
 
-        # Normalizar los registros para que sean por cada 100 g
+        # Normalizar a cada 100 g
         filtered_nut_info[columns_to_normalize] = (
             filtered_nut_info[columns_to_normalize]
             .div(filtered_nut_info["Weight (g)"], axis=0)*100
         )
 
-        print("Connecting to database...")
-        conn = db_connection_func()
+        # Insertar receta
         recipe_id = insert_recipe(
-            conn, 
-            dap["titulo"].loc[i], 
-            translate_es_en(dap["titulo"].loc[i]), 
-            dap["titulo"].loc[i], 
+            supabase,
+            dap["titulo"].loc[i],
+            translate_es_en(dap["titulo"].loc[i]),
+            dap["titulo"].loc[i],
             dap["url"].loc[i],
-            recipe_sum.get("weight"), 
-            recipe_sum, 
+            recipe_sum.get("weight"),
+            recipe_sum,
             int(serving)
         )
         
-        insert_tags(conn, recipe_id=recipe_id, health_labels=recipe_sum.get("HealthLabels"))
-        insert_steps_from_jsonl(conn = conn, jsonl = dap, index = i)
+        # Insertar tags
+        insert_tags(supabase, recipe_id=recipe_id, health_labels=recipe_sum.get("HealthLabels", []))
+        # Insertar pasos de elaboración
+        insert_steps_from_jsonl(supabase, dap, i)
+
+        # Insertar ingredientes (relación muchos a muchos)
         for j in filtered_nut_info.index:
             ingredient_id = get_or_create_ingredient(
-                conn, 
-                filtered_nut_info.loc[j].get("Ingredient").lower(), 
-                filtered_nut_info.loc[j], 
-                filtered_nut_info.loc[j].get("Ingredient").lower(), 
+                supabase,
+                filtered_nut_info.loc[j].get("Ingredient").lower(),
+                filtered_nut_info.loc[j],
+                filtered_nut_info.loc[j].get("Ingredient").lower(),
                 translate_en_es(filtered_nut_info.loc[j].get("Ingredient")).lower()
             )
             insert_ingredient_recipe(
-                conn, 
-                recipe_id, 
-                ingredient_id, 
+                supabase,
+                recipe_id,
+                ingredient_id,
                 float(filtered_nut_info.loc[j].get("Weight (g)"))
             )
 
-
-        json.dump(dap_leftoff, open(leftoff_path, "w"))  # Guardar la posición actual
+        # Guardar la posición actual en el JSON
+        json.dump(dap_leftoff, open(leftoff_path, "w"))
         time.sleep(2)
-

@@ -6,10 +6,9 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-sys.path.append("..")
-dotenv.load_dotenv()
-url = "https://zrhsejedrpoqcyfvfzsr.supabase.co"
-key = os.getenv("db_API_pass")
+
+def connect_supabase(url, key):
+    return create_client(url, key)
 
 def fetch_recipe_ingredients(supabase):
     """Obtiene los datos de la tabla recipe_ingredients desde Supabase."""
@@ -27,8 +26,7 @@ def fetch_recipe_ingredients(supabase):
 
     return df
 
-def preprocess_ingredients(df):
-    """Agrupa los ingredientes por receta en un string concatenado."""
+def preprocess_ingredients(df):  
     return df.groupby("recipe_id")["ingredient_name"].apply(lambda x: " ".join(x)).reset_index()
 
 def vectorize_ingredients(recipe_ingredients):
@@ -108,19 +106,54 @@ def boost_similarity_with_percentage(df, user_ingredients, similarities, alpha=1
     boosted_similarities = similarities + alpha * df['match_percentage'].values
     return boosted_similarities
 
-def filter_health_labels(df, health_labels): #! INCOMPLETE
-    try:
-        supabase = create_client(url, key)
-        tagname = supabase.table('tags').select('id').eq('name', health_labels).execute()
-        response = supabase.table('recipe_tags').select('recipe_id', 'tag_id').eq('tag_id', tagname).execute()
-    except:
-        pass
+def filter_health_labels(supabase, health_labels):
+    """
+    Filtra recetas por etiquetas de salud específicas.
 
-def get_recommendations(user_ingredients, n_results):
-    try:
-        # Conectar a Supabase
-        supabase = create_client(url, key)
+    Esta función consulta la base de datos para encontrar recetas que coincidan con las etiquetas de salud proporcionadas.
 
+    Args:
+        supabase: Cliente de Supabase para realizar consultas a la base de datos.
+        health_labels (list): Lista de strings con las etiquetas de salud a filtrar.
+
+    Returns:
+        list: Lista de IDs de recetas que coinciden con las etiquetas de salud especificadas.
+
+    Ejemplo:
+        >>> labels = ["Vegano", "Sin Gluten"]
+        >>> recipe_ids = filter_health_labels(supabase, labels)
+    """
+    tag_ids = []
+    for label in health_labels:
+        tag_id = supabase.table('tags').select('id').eq('name', label).execute().data
+        tag_ids.append(tag_id[0]["id"])
+    response = [e["recipe_id"] for e in supabase.table('recipe_tags').select('recipe_id').in_('tag_id', tag_ids).execute().data]
+    return response
+
+def filter_calories(supabase, min_calories, max_calories):
+    """
+    Filtra recetas por rango de calorías.
+
+    Esta función consulta la base de datos para encontrar recetas que estén dentro del rango de calorías especificado.
+
+    Args:
+        supabase: Cliente de Supabase para realizar consultas a la base de datos.
+        min_calories (int): Calorías mínimas para filtrar.
+        max_calories (int): Calorías máximas para filtrar.
+
+    Returns:
+        list: Lista de IDs de recetas que están dentro del rango de calorías especificado.
+
+    Ejemplo:
+        >>> min_cal = 100
+        >>> max_cal = 500
+        >>> recipe_ids = filter_calories(supabase, min_cal, max_cal)
+    """
+    response = [e["id"] for e in supabase.table('recipes').select('id').gte('calories', min_calories).lte('calories', max_calories).execute().data]
+    return response
+
+
+def get_recommendations(supabase,user_ingredients):
         # Obtener y procesar datos de ingredientes
         df = fetch_recipe_ingredients(supabase)
         recipe_ingredients = preprocess_ingredients(df)
@@ -138,14 +171,43 @@ def get_recommendations(user_ingredients, n_results):
         recipe_ingredients['boosted_similarity'] = boosted_similarities
         recipe_ingredients["similarity"] = similaridad
 
+        recipe_ingredients = recipe_ingredients[recipe_ingredients["match_percentage"] > 0]
+
         # Ordenar por la similitud ajustada
         recomendaciones = recipe_ingredients.sort_values(by='boosted_similarity', ascending=False)
-        print(recipe_ingredients)
+        # print(recomendaciones)
         # Ver las recomendaciones finales
-        return recomendaciones.head(n_results)["recipe_id"].values
+        return recomendaciones
 
-    except Exception as e:
-        print(f"Error: {str(e)}")
-        return []
-
-
+def get_filtered_recommendations(ingredients, url, key, health_labels, min_calories, max_calories):
+    """
+    Gets recipe recommendations filtered by health labels and calories.
+    
+    Args:
+        ingredients (str): Space-separated string of ingredients
+        url (str): Supabase URL
+        key (str): Supabase key
+        health_labels (list): List of health labels to filter by
+        min_calories (int): Minimum calories
+        max_calories (int): Maximum calories
+        
+    Returns:
+        pd.DataFrame: Filtered recommendations dataframe
+    """
+    # Connect to Supabase
+    supabase = connect_supabase(url, key)
+    
+    # Get initial recommendations
+    df = get_recommendations(supabase, ingredients)
+    
+    # Filter by health labels
+    if not health_labels:
+        filter_label_df = df
+    else:
+        filter_label_df = df[df["recipe_id"].isin(filter_health_labels(supabase, health_labels))]
+    
+    # Filter by calories
+    calories_filter = filter_calories(supabase, min_calories, max_calories)
+    filtered_df = filter_label_df[filter_label_df["recipe_id"].isin(calories_filter)]
+    
+    return filtered_df
