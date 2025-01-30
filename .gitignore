@@ -3,7 +3,6 @@
 SAM/
 recetas_scrapper/
 README_potencial.md
-GroundingDINO\weights\groundingdino_swint_ogc.pth
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
