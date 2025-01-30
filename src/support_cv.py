@@ -170,8 +170,8 @@ def remote_feed():
                 annotated_frame_bgr = cv2.cvtColor(annotated_frame, cv2.COLOR_RGB2BGR)
 
                 # Guardar la imagen anotada
-                output_path = os.path.join(BASE_DIR, "computervision", "live_annotated_image.jpg")
-                cv2.imwrite(output_path, annotated_frame_bgr)
+                # output_path = os.path.join(BASE_DIR, "computervision", "live_annotated_image.jpg")
+                # cv2.imwrite(output_path, annotated_frame_bgr)
                 
                 print(f"Predicción completada. Frases detectadas: {phrases}")
 

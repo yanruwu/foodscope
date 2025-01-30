@@ -45,14 +45,30 @@ if language == "🇪🇸":
     img_file_buffer = st.camera_input("Haz una foto!", disabled=not enable)
 
     if img_file_buffer is not None and enable:
-        # Convertir imagen a bytes
+    # Convertir imagen a bytes
         bytes_data = img_file_buffer.getvalue()
 
         # Si la imagen es diferente a la última procesada, actualizar detección
         if bytes_data != st.session_state.last_uploaded_image:
-            cv2_img = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
-            st.session_state.detection_list = image_feed(cv2_img)
-            st.session_state.last_uploaded_image = bytes_data  # Guardar la imagen actual
+            try:
+                # Abrir la imagen con PIL
+                image = Image.open(img_file_buffer)
+                # Convertir a RGB si es necesario
+                if image.mode != 'RGB':
+                    image = image.convert('RGB')
+                # Convertir a numpy array
+                image_np = np.array(image)
+            except Exception as e:
+                st.error(f"Error al procesar la imagen: {e}")
+                image_np = None
+
+            if image_np is not None:
+                # Procesar la imagen para detección de objetos
+                detection_result = image_feed(image_np)
+                st.session_state.detection_list = detection_result
+                st.session_state.last_uploaded_image = bytes_data  # Guardar la imagen actual
+
+
 
     # Mantener los ingredientes detectados en el multiselect sin volver a detectar en cada cambio
     selected_ingredients = st.multiselect(
