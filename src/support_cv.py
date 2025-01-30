@@ -206,7 +206,7 @@ def image_feed(img):
     TEXT_THRESHOLD = 0.25
 
 
-    frame_source, captured_frame = transform_image(img)
+    frame_source, captured_frame = transform_pil_image(img)
 
     # Realizar predicción con el modelo
     boxes, logits, phrases = predict(
