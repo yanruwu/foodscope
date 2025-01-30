@@ -36,7 +36,7 @@ def vectorize_ingredients(recipe_ingredients):
 def recommend_recipes(vectorizer, X, user_ingredients):
     """Recomienda recetas basadas en los ingredientes proporcionados por el usuario."""
     user_vec = vectorizer.transform([user_ingredients])
-    print([user_ingredients])
+    # print([user_ingredients])
     similaridad = cosine_similarity(user_vec, X)
     return similaridad[0]
 
