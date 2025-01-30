@@ -41,8 +41,8 @@ if language == "🇪🇸":
     if 'last_uploaded_image' not in st.session_state:
         st.session_state.last_uploaded_image = None
 
-    # enable = st.checkbox("Activar cámara")
-    enable = False
+    enable = st.checkbox("Activar cámara")
+    # enable = False
     img_file_buffer = st.camera_input("Haz una foto!", disabled=not enable)
 
     if img_file_buffer is not None and enable:
@@ -53,19 +53,15 @@ if language == "🇪🇸":
         if bytes_data != st.session_state.last_uploaded_image:
             try:
                 # Abrir la imagen con PIL
-                image = Image.open(img_file_buffer)
-                # Convertir a RGB si es necesario
-                if image.mode != 'RGB':
-                    image = image.convert('RGB')
-                # Convertir a numpy array con dtype específico
-                image_np = np.array(image, dtype=np.uint8)
+                image = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
+
             except Exception as e:
                 st.error(f"Error al procesar la imagen: {e}")
-                image_np = None
+                image = None
 
-            if image_np is not None:
+            if image is not None:
                 # Procesar la imagen para detección de objetos
-                detection_result = image_feed(image_np)
+                detection_result = image_feed(image)
                 st.session_state.detection_list = detection_result
                 st.session_state.last_uploaded_image = bytes_data  # Guardar la imagen actual
 
