@@ -1,6 +1,6 @@
 import streamlit as st
 import numpy as np
-import cv2
+from PIL import Image
 from src.support_cv import *
 from src.support_recsys import *
 import dotenv
@@ -56,8 +56,8 @@ if language == "🇪🇸":
                 # Convertir a RGB si es necesario
                 if image.mode != 'RGB':
                     image = image.convert('RGB')
-                # Convertir a numpy array
-                image_np = np.array(image)
+                # Convertir a numpy array con dtype específico
+                image_np = np.array(image, dtype=np.uint8)
             except Exception as e:
                 st.error(f"Error al procesar la imagen: {e}")
                 image_np = None
