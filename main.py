@@ -41,7 +41,7 @@ if language == "🇪🇸":
     if 'last_uploaded_image' not in st.session_state:
         st.session_state.last_uploaded_image = None
 
-    enable = st.checkbox("Activar cámara")
+    enable = st.button("Activar cámara")
     # enable = False
     img_file_buffer = st.camera_input("Haz una foto!", disabled=not enable)
 
