@@ -184,7 +184,7 @@ def remote_feed():
 
 def image_feed(img):
     # Define la ruta base de tu proyecto
-    BASE_DIR = r"C:\Proyecto-Final"
+    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
     # Inicializa el modelo
     model, device = initialize_model(BASE_DIR)
