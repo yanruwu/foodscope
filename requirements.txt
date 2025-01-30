@@ -185,3 +185,4 @@ wrapt==1.17.1
 yapf==0.43.0
 yarl==1.18.3
 zope-interface==7.2
+libgl1-mesa-glx
