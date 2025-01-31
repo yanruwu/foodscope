@@ -142,7 +142,7 @@ if language == "🇪🇸 Español":
                         with cols[idx % 1]:
                             with st.container():
                                 st.markdown(f"#### 📖 {recipe['name_es']}")
-                                st.markdown(f"[![Receta]({recipe['img_url']})]")
+                                st.markdown(f"![Receta]({recipe['img_url']})")
                                 
                                 # Información nutricional en formato tabular
                                 st.markdown(f"""
