@@ -116,35 +116,74 @@ def filter_calories(supabase, min_calories, max_calories):
     response = [e["id"] for e in supabase.table('recipes').select('id').gte('calories', min_calories).lte('calories', max_calories).execute().data]
     return response
 
+def normalize_similarity(recipe_ingredients, similarities):
+    """
+    Normaliza la similitud dividiéndola por la raíz cuadrada del número total de ingredientes.
+    """
+    num_ingredients = recipe_ingredients['ingredient_name'].apply(lambda x: len(x.split()))
+    normalized_similarities = similarities / (num_ingredients**0.5)  # Raíz cuadrada para suavizar el impacto
+    return normalized_similarities
 
-def get_recommendations(supabase,raw_user_ingredients):
-        # Obtener y procesar datos de ingredientes
-        df = fetch_recipe_ingredients(supabase)
-        recipe_ingredients = preprocess_ingredients(df)
+import numpy as np
 
-        # Vectorizar los ingredientes
-        vectorizer, X = vectorize_ingredients(recipe_ingredients)
+def log_penalty_similarity(recipe_ingredients, similarities):
+    """
+    Aplica una penalización logarítmica para evitar que recetas con más ingredientes dominen el ranking.
+    """
+    num_ingredients = recipe_ingredients['ingredient_name'].apply(lambda x: len(x.split()))
+    penalized_similarities = similarities / np.log1p(num_ingredients)  # log1p(x) = log(1 + x) evita dividir entre 0
+    return penalized_similarities
 
-        # Calcular similitud y recomendar
-        p = inflect.engine()
-        user_ingredients = [p.singular_noun(ing) if p.singular_noun(ing) else ing for ing in raw_user_ingredients.split()]
-        user_ingredients = " ".join(user_ingredients)
-        similaridad = recommend_recipes(vectorizer, X, user_ingredients)
-        
-        # Ajustar las similitudes con el boost
-        boosted_similarities = boost_similarity_with_percentage(recipe_ingredients, user_ingredients, similaridad, alpha=1)
+def boost_similarity_with_coverage(df, user_ingredients, similarities, alpha=0.5):
+    """
+    Ajusta las similitudes para priorizar recetas donde el porcentaje de coincidencia es alto,
+    no solo la cantidad absoluta de ingredientes coincidentes.
+    """
+    user_ingredient_set = set(user_ingredients.split())
+    total_user_ingredients = len(user_ingredient_set)
+    
+    def match_coverage(ingredients):
+        recipe_set = set(ingredients.split())
+        matches = len(user_ingredient_set & recipe_set)
+        return matches / max(len(recipe_set), total_user_ingredients)  # Normaliza por tamaño
 
-        # Asociar las similitudes ajustadas al DataFrame
-        recipe_ingredients['boosted_similarity'] = boosted_similarities
-        recipe_ingredients["similarity"] = similaridad
+    df['coverage'] = df['ingredient_name'].apply(match_coverage)
+    
+    # Ajustar la similitud con el boost
+    boosted_similarities = similarities * (1 - alpha) + df['coverage'].values * alpha
+    return boosted_similarities
 
-        recipe_ingredients = recipe_ingredients[recipe_ingredients["match_percentage"] > 0]
 
-        # Ordenar por la similitud ajustada
-        recomendaciones = recipe_ingredients.sort_values(by='boosted_similarity', ascending=False)
-        # print(recomendaciones)
-        # Ver las recomendaciones finales
-        return recomendaciones
+def get_recommendations(supabase, raw_user_ingredients):
+    # Obtener y procesar datos de ingredientes
+    df = fetch_recipe_ingredients(supabase)
+    recipe_ingredients = preprocess_ingredients(df)
+
+    # Vectorizar los ingredientes
+    vectorizer, X = vectorize_ingredients(recipe_ingredients)
+
+    # Calcular similitud y recomendar
+    p = inflect.engine()
+    user_ingredients = [p.singular_noun(ing) if p.singular_noun(ing) else ing for ing in raw_user_ingredients.split()]
+    user_ingredients = " ".join(user_ingredients)
+    similarities = recommend_recipes(vectorizer, X, user_ingredients)
+
+    # Ajustes adicionales para mejorar diversidad
+    similarities = normalize_similarity(recipe_ingredients, similarities)  # Penaliza recetas largas
+    similarities = log_penalty_similarity(recipe_ingredients, similarities)  # Aplica logaritmo
+    similarities = boost_similarity_with_coverage(recipe_ingredients, user_ingredients, similarities, alpha=0.5)  # Prioriza cobertura
+
+    # Asociar las similitudes ajustadas al DataFrame
+    recipe_ingredients['similarity'] = similarities
+
+    # Filtrar recetas sin coincidencias
+    recipe_ingredients = recipe_ingredients[recipe_ingredients["similarity"] > 0]
+
+    # Ordenar por la similitud ajustada
+    recomendaciones = recipe_ingredients.sort_values(by='similarity', ascending=False)
+
+    return recomendaciones
+
 
 def get_filtered_recommendations(ingredients, url, key, health_labels, min_calories, max_calories):
     """

@@ -6,26 +6,14 @@ from src.support_cv import *
 from src.support_recsys import *
 import dotenv
 
-TEXT_PROMPT =  '''
-        potato . onion . garlic . carrot . tomato . lettuce . spinach . cucumber . zucchini . broccoli . 
-        cauliflower . apple . banana . orange . lemon . grape . pear . peach . plum . watermelon . pineapple . 
-        strawberry . blueberry . raspberry . blackberry . mango . kiwi . avocado . ginger . parsley . cilantro . 
-        mint . rosemary . thyme . basil . bay leaf . chili pepper . mushroom . green bean . pea . brussels sprout . 
-        kale . cabbage . celery . asparagus . leek . eggplant . radish . pumpkin . butternut squash . 
-        okra . artichoke . corn . fig . date . papaya . lime . cherry . coconut . melon . 
-        cantaloupe . peanut . almond . walnut . chia seed . sunflower seed . sesame seed . bread . pasta . 
-        chicken . beef . pork . egg . ham . tofu . milk . yogurt . cheese . butter . canned tuna . canned salmon . 
-        crushed tomato . canned tomato . honey . jam . peanut butter . coffee . tea . chocolate . 
-        rice . lentil . chickpeas . black bean . bell pepper . sausage . 
-        '''
-
-food_options = TEXT_PROMPT.split(" . ")
 
 # Configuración y configuración
 dotenv.load_dotenv()
 url = "https://zrhsejedrpoqcyfvfzsr.supabase.co"
 key = os.getenv("db_API_pass")
 supabase = connect_supabase(url, key)
+
+food_options = supabase.table("ingredients").select("name_es", "name_en").execute().data
 
 # Configuración de la página
 st.set_page_config(
@@ -126,7 +114,7 @@ if language == "🇪🇸 Español":
     # Selección de ingredientes con búsqueda (variable temporal)
     temp_selected_ingredients = st.multiselect(
         'Ingredientes detectados y seleccionados:',
-        options=food_options,
+        options=[f["name_en"] for f in food_options],
         default=st.session_state.detection_list,
         help="Puedes escribir para buscar ingredientes"
     )
@@ -136,39 +124,39 @@ if language == "🇪🇸 Español":
         st.session_state.selected_ingredients = temp_selected_ingredients
         st.session_state.page = 'recommendations'
         st.rerun()
-# Página de recomendaciones
-if st.session_state.page == 'recommendations':
-    st.title("🥘 Recetas Recomendadas")
-    
-    with st.spinner('Buscando las mejores recetas...'):
-        if not st.session_state.selected_ingredients:
-            st.warning("No se han seleccionado ingredientes. Por favor, regresa y selecciona algunos ingredientes.")
-        else:
-            rec_ids = get_recommendations(supabase, raw_user_ingredients=" ".join(st.session_state.selected_ingredients))["recipe_id"]
-            recipe_data = supabase.table('recipes').select('id', 'name_es', 'url','calories', 'proteins', 'fats', 'carbs').in_('id', rec_ids).execute().data
-            
-            if recipe_data:
-                # Mostrar recetas en una cuadrícula
-                cols = st.columns(1)
-                for idx, recipe in enumerate(recipe_data):
-                    with cols[idx % 1]:
-                        with st.container():
-                            st.markdown(f"#### 📖 {recipe['name_es']}")
-                            st.markdown(f"[![Receta]({'logo.png'})]({recipe['url']})")
-                            
-                            # Información nutricional en formato tabular
-                            st.markdown(f"""
-                            | Nutriente | Cantidad |
-                            |-----------|-----------|
-                            | 🔥 Calorías | {round(recipe['calories'], ndigits=2)} kcal |
-                            | 🥩 Proteína | {round(recipe['proteins'], ndigits=2)} g |
-                            | 🥑 Grasa | {round(recipe['fats'], ndigits=2)} g |
-                            | 🌾 Carbohidratos | {round(recipe['carbs'], ndigits=2)} g |
-                            """)
-                            st.markdown(f"[Ver receta completa]({recipe['url']})")
+    # Página de recomendaciones
+    if st.session_state.page == 'recommendations':
+        st.title("🥘 Recetas Recomendadas")
+        
+        with st.spinner('Buscando las mejores recetas...'):
+            if not st.session_state.selected_ingredients:
+                st.warning("No se han seleccionado ingredientes. Por favor, regresa y selecciona algunos ingredientes.")
             else:
-                st.info("No se encontraron recetas para los ingredientes seleccionados.")
-    
+                rec_ids = get_recommendations(supabase, raw_user_ingredients=" ".join(st.session_state.selected_ingredients))["recipe_id"]
+                recipe_data = supabase.table('recipes').select('id', 'name_es', 'url','calories', 'proteins', 'fats', 'carbs', 'img_url').in_('id', rec_ids).execute().data
+                
+                if recipe_data:
+                    # Mostrar recetas en una cuadrícula
+                    cols = st.columns(1)
+                    for idx, recipe in enumerate(recipe_data):
+                        with cols[idx % 1]:
+                            with st.container():
+                                st.markdown(f"#### 📖 {recipe['name_es']}")
+                                st.markdown(f"[![Receta]({recipe['img_url']})]")
+                                
+                                # Información nutricional en formato tabular
+                                st.markdown(f"""
+                                | Nutriente | Cantidad |
+                                |-----------|-----------|
+                                | 🔥 Calorías | {round(recipe['calories'], ndigits=2)} kcal |
+                                | 🥩 Proteína | {round(recipe['proteins'], ndigits=2)} g |
+                                | 🥑 Grasa | {round(recipe['fats'], ndigits=2)} g |
+                                | 🌾 Carbohidratos | {round(recipe['carbs'], ndigits=2)} g |
+                                """)
+                                st.markdown(f"[Ver receta completa]({recipe['url']})")
+                else:
+                    st.info("No se encontraron recetas para los ingredientes seleccionados.")
+        
 
 # Botón fijo para volver a la cámara
 st.markdown("""
