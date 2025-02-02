@@ -41,35 +41,6 @@ def recommend_recipes(vectorizer, X, user_ingredients):
     return similaridad[0]
 
 
-def boost_similarity_with_percentage(df, user_ingredients, similarities, alpha=1.0):
-    """
-    Ajusta las similitudes agregando un boost basado en el porcentaje de coincidencia de ingredientes.
-    
-    Args:
-        df (pd.DataFrame): DataFrame con las recetas y sus ingredientes.
-        user_ingredients (str): Lista de ingredientes del usuario como string.
-        similarities (np.array): Array de similitudes calculadas (ej., similitud del coseno).
-        alpha (float): Factor de importancia del porcentaje de coincidencia. A mayor alpha, mayor impacto.
-    
-    Returns:
-        np.array: Similitudes ajustadas con el boost.
-    """
-    user_ingredient_set = set(user_ingredients.split())
-    total_user_ingredients = len(user_ingredient_set)
-    
-    # Calcula el porcentaje de coincidencia para cada receta
-    def match_percentage(ingredients):
-        recipe_set = set(ingredients.split())
-        matches = len(user_ingredient_set & recipe_set)  # Intersección
-        return matches / total_user_ingredients
-    
-    # Aplica el porcentaje de coincidencia
-    df['match_percentage'] = df['ingredient_name'].apply(match_percentage)
-    
-    # Ajusta la similitud sumando el boost basado en el porcentaje
-    boosted_similarities = similarities + alpha * df['match_percentage'].values
-    return boosted_similarities
-
 def filter_health_labels(supabase, health_labels):
     """
     Filtra recetas por etiquetas de salud específicas.
@@ -134,7 +105,7 @@ def log_penalty_similarity(recipe_ingredients, similarities):
     penalized_similarities = similarities / np.log1p(num_ingredients)  # log1p(x) = log(1 + x) evita dividir entre 0
     return penalized_similarities
 
-def boost_similarity_with_coverage(df, user_ingredients, similarities, alpha=0.5):
+def boost_similarity_with_coverage(df, user_ingredients, similarities, alpha=0.7):
     """
     Ajusta las similitudes para priorizar recetas donde el porcentaje de coincidencia es alto,
     no solo la cantidad absoluta de ingredientes coincidentes.

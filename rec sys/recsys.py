@@ -14,4 +14,4 @@ key = os.getenv("db_API_pass")
 
 from src.support_recsys import *
 
-print(get_filtered_recommendations("eggs butter flour", url, key, [], 0, 1000))
+print(get_filtered_recommendations("onion tomato carrot", url, key, [], 0, 1000))
