@@ -5,6 +5,7 @@ import cv2  # Asegúrate de importar OpenCV si no lo has hecho
 from src.support_cv import *
 from src.support_recsys import *
 import dotenv
+import streamlit_tags as stt
 
 
 # Configuración y configuración
@@ -112,12 +113,10 @@ if language == "🇪🇸 Español":
                 st.error(f"Error al procesar la imagen: {e}")
 
     # Selección de ingredientes con búsqueda (variable temporal)
-    temp_selected_ingredients = st.multiselect(
-        'Ingredientes detectados y seleccionados:',
-        options=[f["name_en"] for f in food_options],
-        default=st.session_state.detection_list,
-        help="Puedes escribir para buscar ingredientes"
-    )
+    temp_selected_ingredients = stt.st_tags(value = st.session_state.detection_list,
+                                             suggestions = [f["name_en"] for f in food_options], 
+                                             label = "Ingredientes detectados y seleccionados:",
+                                             text = "Escribe y presiona enter para añadir más")
 
     # Botón para ir a recomendaciones
     if st.button("🔍 Ver Recomendaciones", use_container_width=True):
