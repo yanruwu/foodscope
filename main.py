@@ -83,6 +83,8 @@ if 'last_uploaded_image' not in st.session_state:
     st.session_state.last_uploaded_image = None
 if 'page' not in st.session_state:
     st.session_state.page = 'home'
+if 'pagina' not in st.session_state:
+    st.session_state.pagina = 0
 if 'selected_ingredients' not in st.session_state:
     st.session_state.selected_ingredients = []  # Inicializar como lista vacía
 
