@@ -60,7 +60,7 @@ def filter_health_labels(supabase, health_labels):
     """
     tag_ids = []
     for label in health_labels:
-        tag_id = supabase.table('tags').select('id').eq('name_norm', label).execute().data
+        tag_id = supabase.table('tags').select('id').eq('name', label).execute().data
         tag_ids.append(tag_id[0]["id"])
     response = [e["recipe_id"] for e in supabase.table('recipe_tags').select('recipe_id').in_('tag_id', tag_ids).execute().data]
     return response
@@ -142,7 +142,7 @@ def get_recommendations(supabase, raw_user_ingredients):
     # Ajustes adicionales para mejorar diversidad
     similarities = normalize_similarity(recipe_ingredients, similarities)  # Penaliza recetas largas
     similarities = log_penalty_similarity(recipe_ingredients, similarities)  # Aplica logaritmo
-    similarities = boost_similarity_with_coverage(recipe_ingredients, user_ingredients, similarities, alpha=0.5)  # Prioriza cobertura
+    similarities = boost_similarity_with_coverage(recipe_ingredients, user_ingredients, similarities, alpha=0.7)  # Prioriza cobertura
 
     # Asociar las similitudes ajustadas al DataFrame
     recipe_ingredients['similarity'] = similarities

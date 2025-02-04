@@ -113,10 +113,10 @@ if language == "🇪🇸 Español":
                 st.error(f"Error al procesar la imagen: {e}")
 
     # Selección de ingredientes con búsqueda (variable temporal)
-    temp_selected_ingredients = stt.st_tags(value = st.session_state.detection_list,
+    temp_selected_ingredients = set(stt.st_tags(value = st.session_state.detection_list,
                                              suggestions = [f["name_en"] for f in food_options], 
                                              label = "Ingredientes detectados y seleccionados:",
-                                             text = "Escribe y presiona enter para añadir más")
+                                             text = "Escribe y presiona enter para añadir más"))
 
     # Botón para ir a recomendaciones
     if st.button("🔍 Ver Recomendaciones", use_container_width=True):
@@ -134,29 +134,77 @@ if language == "🇪🇸 Español":
                 rec_ids = get_recommendations(supabase, raw_user_ingredients=" ".join(st.session_state.selected_ingredients))["recipe_id"]
                 recipe_data = supabase.table('recipes').select('id', 'name_es', 'url','calories', 'proteins', 'fats', 'carbs', 'img_url').in_('id', rec_ids).execute().data
                 
-                if recipe_data:
-                    # Mostrar recetas en una cuadrícula
-                    cols = st.columns(1)
-                    for idx, recipe in enumerate(recipe_data):
+                # Definir el número de recetas por página
+                recetas_por_pagina = 5
+
+                # Número total de páginas
+                total_paginas = (len(recipe_data) - 1) // recetas_por_pagina + 1
+
+                # Inicializar página en sesión si no existe
+                if "pagina" not in st.session_state:
+                    st.session_state["pagina"] = 0
+
+                # Obtener la página actual desde la sesión
+                p = st.session_state["pagina"]
+
+                # Calcular el rango de recetas a mostrar
+                inicio = p * recetas_por_pagina
+                fin = inicio + recetas_por_pagina
+                recetas_mostradas = recipe_data[inicio:fin]
+
+                if recetas_mostradas:
+                    cols = st.columns(1)  # Puedes cambiar el número si quieres más columnas
+
+                    for idx, recipe in enumerate(recetas_mostradas):
                         with cols[idx % 1]:
                             with st.container():
-                                st.markdown(f"#### 📖 {recipe['name_es']}")
-                                st.markdown(f"![Receta]({recipe['img_url']})")
-                                
-                                # Información nutricional en formato tabular
-                                st.markdown(f"""
-                                | Nutriente | Cantidad |
-                                |-----------|-----------|
-                                | 🔥 Calorías | {round(recipe['calories'], ndigits=2)} kcal |
-                                | 🥩 Proteína | {round(recipe['proteins'], ndigits=2)} g |
-                                | 🥑 Grasa | {round(recipe['fats'], ndigits=2)} g |
-                                | 🌾 Carbohidratos | {round(recipe['carbs'], ndigits=2)} g |
-                                """)
-                                st.markdown(f"[Ver receta completa]({recipe['url']})")
+                                # Sección de vista previa con nombre y macros en una sola línea
+                                st.markdown(
+                                    f"#### 📖 {recipe['name_es']}  "
+                                )
+                                st.markdown(
+                                    f"🔥 {round(recipe['calories'], 1)} kcal  |  "
+                                    f"🥩 {round(recipe['proteins'], 1)} g  |  "
+                                    f"🥑 {round(recipe['fats'], 1)} g  |  "
+                                    f"🌾 {round(recipe['carbs'], 1)} g"
+                                )
+
+                                # Sección desplegable con imagen e ingredientes
+                                with st.expander("📜 Ver detalles"):
+                                    # Mostrar la imagen solo cuando se despliega
+                                    st.image(recipe['img_url'], use_container_width =True)
+
+                                    # Obtener los ingredientes
+                                    recipe_ingredients_ids = [
+                                        e["ingredient_id"]
+                                        for e in supabase.table("recipe_ingredients")
+                                        .select("ingredient_id")
+                                        .eq("recipe_id", recipe['id'])
+                                        .execute()
+                                        .data
+                                    ]
+                                    recipe_ingredients = [
+                                        ri["name_es"].capitalize()
+                                        for ri in supabase.table("ingredients")
+                                        .select("name_es")
+                                        .in_("id", recipe_ingredients_ids)
+                                        .execute()
+                                        .data
+                                    ]
+
+                                    # Mostrar ingredientes
+                                    # st.markdown(f"**Tienes:** {set(st.session_state.selected_ingredients) & set(recipe_ingredients)}")
+                                    st.markdown("**Ingredientes:**")
+                                    st.write(" | ".join(recipe_ingredients))
+                                    st.write("**Pasos**")
+                                    recipe_steps = supabase.table("steps").select("description").eq("recipe_id", recipe["id"]).execute().data[0]["description"]
+                                    st.write(recipe_steps.replace(".", ".\n"))
+
+                                    # # Botón para ver la receta completa (siempre visible)
+                                    # st.page_link(label="Ver receta completa", page=recipe['url'], icon="⛓️‍💥")
+
                 else:
                     st.info("No se encontraron recetas para los ingredientes seleccionados.")
-        
-
 # Botón fijo para volver a la cámara
 st.markdown("""
     <div class="fixed-button">
@@ -167,3 +215,23 @@ st.markdown("""
         </form>
     </div>
     """, unsafe_allow_html=True)
+
+# Botones de paginación
+col1, col2, col3 = st.columns([1,2,1])
+
+with col1:
+    if st.session_state["pagina"] > 0:
+        if st.button("⬅ Anterior"):
+            st.session_state["pagina"] -= 1
+            st.rerun()
+
+with col2:
+    st.markdown(f'<p style="text-align:center; font-size:20px;">Página {st.session_state["pagina"] + 1} / {total_paginas}</p>', unsafe_allow_html=True)
+
+with col3:
+    if st.session_state["pagina"] < total_paginas - 1:
+        if st.button("Siguiente ➡"):
+            st.session_state["pagina"] += 1
+            st.rerun()
+
+            
