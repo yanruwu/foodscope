@@ -204,9 +204,26 @@ if language == "🇪🇸 Español":
 
                                     # # Botón para ver la receta completa (siempre visible)
                                     # st.page_link(label="Ver receta completa", page=recipe['url'], icon="⛓️‍💥")
-
+                
                 else:
                     st.info("No se encontraron recetas para los ingredientes seleccionados.")
+                # Botones de paginación
+                col1, col2, col3 = st.columns([1,2,1])
+
+                with col1:
+                    if st.session_state["pagina"] > 0:
+                        if st.button("⬅ Anterior"):
+                            st.session_state["pagina"] -= 1
+                            st.rerun()
+
+                with col2:
+                    st.markdown(f'<p style="text-align:center; font-size:20px;">Página {st.session_state["pagina"] + 1} / {total_paginas}</p>', unsafe_allow_html=True)
+
+                with col3:
+                    if st.session_state["pagina"] < total_paginas - 1:
+                        if st.button("Siguiente ➡"):
+                            st.session_state["pagina"] += 1
+                            st.rerun()
 # Botón fijo para volver a la cámara
 st.markdown("""
     <div class="fixed-button">
@@ -218,22 +235,6 @@ st.markdown("""
     </div>
     """, unsafe_allow_html=True)
 
-# Botones de paginación
-col1, col2, col3 = st.columns([1,2,1])
 
-with col1:
-    if st.session_state["pagina"] > 0:
-        if st.button("⬅ Anterior"):
-            st.session_state["pagina"] -= 1
-            st.rerun()
-
-with col2:
-    st.markdown(f'<p style="text-align:center; font-size:20px;">Página {st.session_state["pagina"] + 1} / {total_paginas}</p>', unsafe_allow_html=True)
-
-with col3:
-    if st.session_state["pagina"] < total_paginas - 1:
-        if st.button("Siguiente ➡"):
-            st.session_state["pagina"] += 1
-            st.rerun()
 
             
