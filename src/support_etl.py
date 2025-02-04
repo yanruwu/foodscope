@@ -314,6 +314,9 @@ def process_recipes(file_path: str, leftoff_path: str):
             .div(filtered_nut_info["Weight (g)"], axis=0)*100
         )
 
+        # Guardar la posición actual en el JSON
+        json.dump(dap_leftoff, open(leftoff_path, "w"))
+
         # Insertar receta
         recipe_id = insert_recipe(
             supabase,
@@ -347,6 +350,4 @@ def process_recipes(file_path: str, leftoff_path: str):
                 float(filtered_nut_info.loc[j].get("Weight (g)"))
             )
 
-        # Guardar la posición actual en el JSON
-        json.dump(dap_leftoff, open(leftoff_path, "w"))
         time.sleep(2)

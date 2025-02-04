@@ -209,3 +209,7 @@ def image_feed(img):
     cv2.imwrite(output_path, annotated_frame)
     
     print(f"Predicción completada. Frases detectadas: {phrases}")
+
+
+if __name__ == "__main__":
+    image_feed("computervision/test.jpg")
