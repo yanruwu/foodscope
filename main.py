@@ -61,18 +61,19 @@ footer {
     top: 0;
     z-index: 9999;
     background-color: #F26722;
-    height: 60px;
+    /* Retiramos la altura fija para que crezca si hace falta */
     display: flex;
     align-items: center;
-    padding: 0 2rem;
+    justify-content: space-between; /* Si quieres la logo a la izquierda y menús a la derecha */
+    flex-wrap: wrap; /* Permite que los elementos pasen a segunda línea si no caben */
+    
+    /* Aumentamos el padding vertical y horizontal */
+    padding: 0.8rem 2rem;
+    
+    /* Borde inferior redondeado */
+    border-radius: 1rem 1rem 1rem 1rem; 
+    
     margin-bottom: 1rem;
-}
-
-/* Ajuste de padding en pantallas más estrechas */
-@media screen and (max-width: 600px) {
-    .topbar {
-        padding: 0 1rem; /* Reduce el padding horizontal en móviles */
-    }
 }
 
 .topbar-logo {
@@ -92,8 +93,8 @@ footer {
     display: flex;
     align-items: center;
     gap: 1.5rem;
-    flex-wrap: wrap;          /* Permite que, si no caben en una línea, pasen a la siguiente */
-    justify-content: flex-end; /* Mantiene la alineación a la derecha */
+    flex-wrap: wrap;        /* Para que Contacto y Acerca de no se superpongan */
+    justify-content: flex-end;
 }
 
 .topbar-right a {
@@ -106,10 +107,13 @@ footer {
     text-decoration: underline;
 }
 
-/* Si la pantalla es muy pequeña (por ejemplo < 450px), reducimos la fuente */
+/* Si la pantalla es aún más pequeña, reducimos la fuente o el padding si es necesario */
 @media screen and (max-width: 450px) {
+    .topbar {
+        padding: 0.6rem 1rem;
+    }
     .topbar-right a {
-        font-size: 0.9rem;  /* o el tamaño que prefieras */
+        font-size: 0.9rem;
     }
 }
 
