@@ -178,8 +178,8 @@ def load_logo_base64(path: str = "logo.png") -> str:
 def render_topbar():
     # Cargamos el logo en base64, si existe
     encoded_logo = ""
-    if os.path.exists("logo.png"):
-        with open("logo.png", "rb") as f:
+    if os.path.exists("logo_transparent.png"):
+        with open("logo_transparent.png", "rb") as f:
             encoded_logo = base64.b64encode(f.read()).decode("utf-8")
 
     if encoded_logo:
