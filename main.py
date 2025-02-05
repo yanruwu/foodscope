@@ -14,11 +14,23 @@ from src.support_etl import translate_es_en, translate_en_es
 # ====================================================
 # CONFIGURACIÓN DE STREAMLIT
 # ====================================================
-st.set_page_config(
-    page_title="FoodScope",
-    page_icon="🍽️",
-    layout="wide"
+st.set_page_config(page_title="FoodScope - Identifica ingredientes y descubre recetas",
+                    page_icon="🍽️",
+                    layout="wide"
 )
+
+favicon_html = """
+    <link rel="icon" href="logo.png" type="image/x-icon">
+"""
+st.markdown(favicon_html, unsafe_allow_html=True)
+
+meta_description = """
+    <meta name="description" content="Explora ingredientes y encuentra recetas con FoodScope. Tu asistente inteligente para identificar productos y mejorar tu cocina.">
+    <meta name="keywords" content="recetas, ingredientes, IA, reconocimiento de alimentos, comida, cocina inteligente, FoodScope">
+    <meta name="author" content="FoodScope Team">
+"""
+
+st.markdown(meta_description, unsafe_allow_html=True)
 
 # ====================================================
 # CSS TEMA OSCURO + DETALLES NARANJA
@@ -55,6 +67,14 @@ footer {
     padding: 0 2rem;
     margin-bottom: 1rem;
 }
+
+/* Ajuste de padding en pantallas más estrechas */
+@media screen and (max-width: 600px) {
+    .topbar {
+        padding: 0 1rem; /* Reduce el padding horizontal en móviles */
+    }
+}
+
 .topbar-logo {
     display: flex;
     align-items: center;
@@ -67,11 +87,15 @@ footer {
     height: 40px;
     margin-right: 10px;
 }
+
 .topbar-right {
     display: flex;
     align-items: center;
     gap: 1.5rem;
+    flex-wrap: wrap;          /* Permite que, si no caben en una línea, pasen a la siguiente */
+    justify-content: flex-end; /* Mantiene la alineación a la derecha */
 }
+
 .topbar-right a {
     color: #fff;
     text-decoration: none;
@@ -81,6 +105,14 @@ footer {
 .topbar-right a:hover {
     text-decoration: underline;
 }
+
+/* Si la pantalla es muy pequeña (por ejemplo < 450px), reducimos la fuente */
+@media screen and (max-width: 450px) {
+    .topbar-right a {
+        font-size: 0.9rem;  /* o el tamaño que prefieras */
+    }
+}
+
 
 /* Tabs en oscuro, tab activa en naranja */
 [data-testid="stHorizontalBlock"] > div {
@@ -146,8 +178,12 @@ dotenv.load_dotenv()
 url = "https://zrhsejedrpoqcyfvfzsr.supabase.co"
 key = os.getenv("db_API_pass")
 supabase = connect_supabase(url, key)
+@st.cache_data
+def get_food_options():
+    food_options = supabase.table("ingredients").select("name_es", "name_en").execute().data
+    return food_options
 
-food_options = supabase.table("ingredients").select("name_es", "name_en").execute().data
+food_options = get_food_options()
 
 if 'detection_list' not in st.session_state:
     st.session_state.detection_list = []
