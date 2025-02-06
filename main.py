@@ -164,20 +164,29 @@ div [data-testid="stHorizontalBlock"] button[aria-selected="true"] {
     border: none !important;
 }
 
-/* Cámara con ancho máximo (desktop) y 100% en móvil */
+/* Center the camera container and set width */
 .camera-container {
     margin: 0 auto;
-    width: 100%;
+    width: 100vw; /* Full viewport width */
     max-width: 600px;
+    height: auto;
 }
+
+/* Mobile: Make the camera fullscreen */
 @media screen and (max-width: 768px) {
     .camera-container {
-        max-width: 100%;
+        max-width: 100vw;
+        height: 100vh;
     }
 }
+
+/* Ensure Streamlit's camera widget takes full space */
 .camera-container .stCamera {
     width: 100% !important;
+    height: 100vh !important;
+    object-fit: cover; /* Ensures it stretches properly */
 }
+
 
 /* Botones en naranja */
 div.stButton > button {
@@ -196,7 +205,29 @@ div.stButton > button:hover {
 .stToggleSwitch label[data-baseweb="checkbox"] > div {
     background-color: #F26722 !important;
 }
+            
+div[data-baseweb="tab-highlight"] {
+    background-color: #F26722 !important; /* Change to any color */
+}
 
+/* Target the slider track */
+div[data-baseweb="slider"] div[role="slider"] {
+    background: #F26722 !important;
+}
+
+/* Target the submit button */
+button[data-testid="stBaseButton-secondaryFormSubmit"] {
+    background-color: red !important;  /* Change button background */
+    color: white !important;  /* Change text color */
+    border-radius: 8px !important; /* Round corners */
+    border: 2px solid darkred !important; /* Border color */
+}
+
+/* Hover effect */
+button[data-testid="stBaseButton-secondaryFormSubmit"]:hover {
+    background-color: darkred !important;
+}
+            
 /* Expander */
 .st-expander {
     background-color: #1F1F1F !important; 
@@ -369,7 +400,6 @@ with tab_recom:
     # Lógica de la búsqueda
     if submitted:
         st.session_state.selected_ingredients = temp_selected_ingredients
-        
         # Si no hay ingredientes => cargamos TODAS las recetas y filtramos
         if not st.session_state.selected_ingredients:
             # 1. Obtenemos todas las recetas en [min_cal, max_cal]
@@ -419,16 +449,16 @@ with tab_recom:
                 rec_info = ordered_recipe_data
                 st.session_state["recipe_data"] = rec_info
 
-        st.session_state["pagina"] = 0
+        # st.session_state["pagina"] = 0
 
     # Mostramos st.session_state["recipe_data"]
     recipe_data = st.session_state["recipe_data"]
-    p = st.session_state["pagina"]
 
     if not recipe_data:
         st.info("No se encontraron recetas o no has pulsado 'Iniciar búsqueda'.")
     else:
         # Paginación
+        p = st.session_state["pagina"]
         recetas_por_pagina = 5
         total_paginas = (len(recipe_data) - 1) // recetas_por_pagina + 1
         inicio = p * recetas_por_pagina
