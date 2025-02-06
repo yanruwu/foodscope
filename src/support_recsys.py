@@ -117,7 +117,7 @@ def filter_health_labels(supabase, health_labels):
     """
     tag_ids = []
     for label in health_labels:
-        tag_id = supabase.table('tags').select('id').eq('name', label).execute().data
+        tag_id = supabase.table('tags').select('id').eq('name_es', label).execute().data
         tag_ids.append(tag_id[0]["id"])
     response = [e["recipe_id"] for e in supabase.table('recipe_tags').select('recipe_id').in_('tag_id', tag_ids).execute().data]
     return response
@@ -175,5 +175,4 @@ def get_filtered_recommendations(ingredients, url, key, health_labels, min_calor
     # Filter by calories
     calories_filter = filter_calories(supabase, min_calories, max_calories)
     filtered_df = filter_label_df[filter_label_df["recipe_id"].isin(calories_filter)]
-    
     return filtered_df
