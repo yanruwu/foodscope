@@ -350,9 +350,10 @@ with tab_recom:
         tag_data = supabase.table("tags").select("id, name_es").execute().data
         all_tag_names = [row["name_es"] for row in tag_data]
         selected_tag_names = st.multiselect(
-            "## Etiquetas (tags) de salud (opcional):",
-            all_tag_names,
-            default=[]
+            label = "Tipo de dieta:",
+            options = all_tag_names,
+            default = [],
+            placeholder = "Elige una opción (O deja en blanco si no tienes preferencias)"
         )
 
         # (B) Filtro de calorías
@@ -549,7 +550,7 @@ with tab_recom:
                 if p > 0:
                     if st.button("⬅ Anterior"):
                         st.session_state["pagina"] -= 1
-                        st.rerun()
+                        # st.rerun()
                 st.markdown("</div>", unsafe_allow_html=True)
 
             with col2:
@@ -563,5 +564,5 @@ with tab_recom:
                 if p < total_paginas - 1:
                     if st.button("Siguiente ➡"):
                         st.session_state["pagina"] += 1
-                        st.rerun()
+                        # st.rerun()
                 st.markdown("</div>", unsafe_allow_html=True)

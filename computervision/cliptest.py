@@ -19,7 +19,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 model, preprocess = clip.load("ViT-B/32", device=device)
 
 # Cargar imagen
-image = preprocess(Image.open(r"computervision\bellpepper.jpg")).unsqueeze(0).to(device)
+image = preprocess(Image.open(r"computervision\test.jpg")).unsqueeze(0).to(device)
 
 # Lista de etiquetas (puedes poner 50+ sin problemas)
 labels = ["tomato", "cheese", "bread", "lettuce", "onion", "garlic", "chicken", "beef", "fish", "pepper",

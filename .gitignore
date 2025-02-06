@@ -4,6 +4,7 @@ SAM/
 recetas_scrapper/
 README_potencial.md
 *.ipynb
+api.py
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
