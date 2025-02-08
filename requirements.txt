@@ -2,8 +2,8 @@ streamlit==1.42.0
 opencv-python==4.11.0.86
 python-dotenv==1.0.1
 streamlit-tags==1.2.8
-pytorch==2.5.1
-torchvision==0.21.0
+torch==2.5.1
+torchvision==0.20.1
 supervision==0.25.1
 transformers==4.48.2
 addict==2.4.0
