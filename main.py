@@ -6,6 +6,7 @@ import base64
 import numpy as np
 import random
 import streamlit_tags as stt
+import streamlit.components.v1 as components
 
 # Importa tus módulos o funciones personalizadas
 from src.support_cv import image_feed
@@ -361,6 +362,21 @@ with tab_recom:
                 text="Escribe y presiona enter para añadir más"
             )
         )
+        components.html(
+                        """
+                        <script>
+                        // Espera medio segundo para que se renderice el widget
+                        setTimeout(function(){
+                            // Aquí buscamos el input basado en su placeholder (ajusta el selector si es necesario)
+                            var inputEl = document.querySelector('input[placeholder="Escribe y presiona enter para añadir más"]');
+                            if (inputEl) {
+                                inputEl.setAttribute("enterkeyhint", "done");
+                            }
+                        }, 500);
+                        </script>
+                        """,
+                        height=0
+                    )
 
         tag_data = supabase.table("tags").select("id, name_es").execute().data
         all_tag_names = [row["name_es"] for row in tag_data]
