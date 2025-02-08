@@ -1,0 +1,10 @@
+[server]
+runOnSave = false
+
+[theme]
+base = "light"
+primaryColor = "#F26722"            # Color de acento (anaranjado)
+backgroundColor = "#FFF3E0"           # Fondo principal: un tono claro anaranjado (por ejemplo, un naranja pastel)
+secondaryBackgroundColor = "#FFE0B2"  # Fondo secundario: un tono ligeramente más oscuro
+textColor = "#000000"                 # Texto en negro para buena legibilidad
+font = "sans serif"                 # Tipo de fuente

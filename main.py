@@ -49,56 +49,43 @@ st.set_page_config(page_title="FoodScope - Identifica ingredientes y descubre re
                     layout="wide"
 )
 
+st.markdown("""
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+html, body, .stAppViewContainer, .stAppViewContainer * {
+    font-family: 'Poppins', sans-serif !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 
 meta_description = """
     <meta name="description" content="Explora ingredientes y encuentra recetas con FoodScope. Tu asistente inteligente para identificar productos y mejorar tu cocina.">
     <meta name="keywords" content="recetas, ingredientes, IA, reconocimiento de alimentos, comida, cocina inteligente, FoodScope">
     <meta name="author" content="FoodScope Team">
 """
-
 st.markdown(meta_description, unsafe_allow_html=True)
 
 # ====================================================
-# CSS TEMA OSCURO + DETALLES NARANJA
+# CSS PERSONALIZADO (Se han eliminado las reglas globales de fondo y color)
 # ====================================================
 st.markdown("""
 <style>
-/* Fondo oscuro y texto claro */
-[data-testid="stAppViewContainer"],
-body, .main {
-    background-color: #121212 !important; 
-    color: #FFFFFF !important;
-}
-p, div, h1, h2, h3, h4, h5, h6, span, label {
-    color: #FFFFFF !important;
-}
+/* Se han eliminado las reglas globales que fijan el fondo y el color del texto,
+   para permitir que el tema se gestione mediante el archivo config.toml. */
 
-/* Ocultar header y footer de Streamlit */
-header[data-testid="stHeader"] {
-    display: none;
-}
-footer {
-    visibility: hidden;
-}
-
-/* Topbar naranja */
+/* Estilos personalizados para el Topbar y elementos específicos */
 .topbar {
     position: sticky;
     top: 0;
     z-index: 9999;
     background-color: #F26722;
-    /* Retiramos la altura fija para que crezca si hace falta */
     display: flex;
     align-items: center;
-    justify-content: space-between; /* Si quieres la logo a la izquierda y menús a la derecha */
-    flex-wrap: wrap; /* Permite que los elementos pasen a segunda línea si no caben */
-    
-    /* Aumentamos el padding vertical y horizontal */
+    justify-content: space-between;
+    flex-wrap: wrap;
     padding: 0.8rem 2rem;
-    
-    /* Borde inferior redondeado */
-    border-radius: 1rem 1rem 1rem 1rem; 
-    
+    border-radius: 1rem;
     margin-bottom: 1rem;
 }
 
@@ -107,7 +94,8 @@ footer {
     align-items: center;
     font-weight: bold;
     font-size: 1.3rem;
-    color: #fff;
+    /* Usamos 'inherit' para tomar el color definido por el tema */
+    color: inherit;
     margin-right: auto;
 }
 .topbar-logo img {
@@ -119,12 +107,12 @@ footer {
     display: flex;
     align-items: center;
     gap: 1.5rem;
-    flex-wrap: wrap;        /* Para que Contacto y Acerca de no se superpongan */
+    flex-wrap: wrap;
     justify-content: flex-end;
 }
 
 .topbar-right a {
-    color: #fff;
+    color: inherit;
     text-decoration: none;
     font-weight: 600;
     font-size: 1rem;
@@ -133,7 +121,6 @@ footer {
     text-decoration: underline;
 }
 
-/* Si la pantalla es aún más pequeña, reducimos la fuente o el padding si es necesario */
 @media screen and (max-width: 450px) {
     .topbar {
         padding: 0.6rem 1rem;
@@ -143,15 +130,14 @@ footer {
     }
 }
 
-
-/* Tabs en oscuro, tab activa en naranja */
+/* Tabs estilos */
 [data-testid="stHorizontalBlock"] > div {
     border: none !important;
     background-color: transparent !important;
 }
 div [data-testid="stHorizontalBlock"] button[kind="tab"] {
     background-color: transparent !important;
-    color: #FFFFFF !important;
+    color: inherit !important;
     border: 1px solid #444 !important;
 }
 div [data-testid="stHorizontalBlock"] button[aria-selected="true"] {
@@ -160,15 +146,14 @@ div [data-testid="stHorizontalBlock"] button[aria-selected="true"] {
     border: none !important;
 }
 
-/* Center the camera container and set width */
+/* Center the camera container */
 .camera-container {
     margin: 0 auto;
-    width: 100vw; /* Full viewport width */
+    width: 100vw;
     max-width: 600px;
     height: auto;
 }
 
-/* Mobile: Make the camera fullscreen */
 @media screen and (max-width: 768px) {
     .camera-container {
         max-width: 100vw;
@@ -176,13 +161,11 @@ div [data-testid="stHorizontalBlock"] button[aria-selected="true"] {
     }
 }
 
-/* Ensure Streamlit's camera widget takes full space */
 .camera-container .stCamera {
     width: 100% !important;
     height: 100vh !important;
-    object-fit: cover; /* Ensures it stretches properly */
+    object-fit: cover;
 }
-
 
 /* Botones en naranja */
 div.stButton > button {
@@ -203,7 +186,7 @@ div.stButton > button:hover {
 }
             
 div[data-baseweb="tab-highlight"] {
-    background-color: #F26722 !important; /* Change to any color */
+    background-color: #F26722 !important;
 }
 
 /* Target the slider track */
@@ -213,20 +196,19 @@ div[data-baseweb="slider"] div[role="slider"] {
 
 /* Target the submit button */
 button[data-testid="stBaseButton-secondaryFormSubmit"] {
-    background-color: red !important;  /* Change button background */
-    color: white !important;  /* Change text color */
-    border-radius: 8px !important; /* Round corners */
-    border: 2px solid darkred !important; /* Border color */
+    background-color: red !important;
+    color: white !important;
+    border-radius: 8px !important;
+    border: 2px solid darkred !important;
 }
 
-/* Hover effect */
 button[data-testid="stBaseButton-secondaryFormSubmit"]:hover {
     background-color: darkred !important;
 }
-            
+
 /* Expander */
 .st-expander {
-    background-color: #1F1F1F !important; 
+    background-color: inherit !important;
     border: 1px solid #FFA766 !important;
 }
 </style>
@@ -239,6 +221,7 @@ dotenv.load_dotenv()
 url = "https://zrhsejedrpoqcyfvfzsr.supabase.co"
 key = os.getenv("db_API_pass")
 supabase = connect_supabase(url, key)
+
 @st.cache_data
 def get_food_options():
     food_options = supabase.table("ingredients").select("name_es", "name_en").execute().data
@@ -255,17 +238,14 @@ if 'selected_ingredients' not in st.session_state:
 if 'pagina' not in st.session_state:
     st.session_state["pagina"] = 0
 
-# 0 = Reconocimiento, 1 = Recomendaciones
 if 'active_tab_idx' not in st.session_state:
     st.session_state.active_tab_idx = 0
 
-# Aquí guardaremos las recetas resultantes tras filtrar (para no recargar)
 if "recipe_data" not in st.session_state:
     st.session_state["recipe_data"] = []
 
 # ====================================================
 # FUNCIÓN PARA CARGAR LOGO EN BASE64
-# (Si no lo encuentras, puedes omitir)
 # ====================================================
 def load_logo_base64(path: str = "logo.png") -> str:
     """Lee un archivo .png en binario y retorna su contenido en base64."""
@@ -277,7 +257,6 @@ def load_logo_base64(path: str = "logo.png") -> str:
 # RENDER TOPBAR (con LOGO base64)
 # ====================================================
 def render_topbar():
-    # Cargamos el logo en base64, si existe
     encoded_logo = ""
     if os.path.exists("logo_transparent.png"):
         with open("logo_transparent.png", "rb") as f:
@@ -286,7 +265,7 @@ def render_topbar():
     if encoded_logo:
         logo_html = f'<img src="data:image/png;base64,{encoded_logo}" alt="Logo" />'
     else:
-        logo_html = ""  # No se encontró el archivo, o dejas un texto
+        logo_html = ""
 
     topbar_html = f"""
     <div class="topbar">
@@ -295,7 +274,6 @@ def render_topbar():
             FoodScope
         </div>
         <div class="topbar-right">
-            <!-- Cambia a tu repositorio de GitHub u otro enlace -->
             <a href="https://github.com/yanruwu/foodscope/issues/new?template=Blank+issue">Contacto</a>
             <a href="https://github.com/yanruwu/foodscope" target="_blank">Acerca de</a>
         </div>
@@ -318,7 +296,6 @@ else:
     tab_names = ["Recomendaciones", "Reconocimiento"]
     tabs_obj = st.tabs(tab_names)
     tab_recom, tab_reco = tabs_obj[0], tabs_obj[1]
-
 
 # =============================
 # TAB RECONOCIMIENTO
@@ -345,35 +322,24 @@ with tab_reco:
     st.write("**Ingredientes detectados (puedes editarlos en la otra pestaña):**")
     st.write(", ".join(st.session_state.detection_list) or "Ninguno aún.")
 
-
 # =============================
 # TAB RECOMENDACIONES
 # =============================
 with tab_recom:
     st.title("🥘 Recomendaciones")
 
-    # Form con un único botón "Iniciar búsqueda"
     with st.form("search_form"):
-        # Combinar lo detectado con lo ya existente
-        # O simplemente mostrar st.session_state.detection_list
-        # en stt.st_tags "value"
-        # El usuario puede agregar / quitar manualmente
         temp_selected_ingredients = set(
             stt.st_tags(
-                value=(
-                    list(st.session_state.detection_list)
-                    if not st.session_state.selected_ingredients 
-                    else list(st.session_state.selected_ingredients)
-                ),
+                value=(list(st.session_state.detection_list)
+                       if not st.session_state.selected_ingredients 
+                       else list(st.session_state.selected_ingredients)),
                 label = "## Ingredientes:",
                 suggestions=[f["name_es"] for f in food_options],
                 text="Escribe y presiona enter para añadir más"
             )
         )
 
-        # st.write("---")
-
-        # (A) Filtro de tags
         tag_data = supabase.table("tags").select("id, name_es").execute().data
         all_tag_names = [row["name_es"] for row in tag_data]
         selected_tag_names = st.multiselect(
@@ -383,23 +349,18 @@ with tab_recom:
             placeholder = "Elige una opción (O deja en blanco si no tienes preferencias)"
         )
 
-        # (B) Filtro de calorías
         min_cal, max_cal = st.slider(
             "## Rango de calorías",
             0, 2000, (0, 700), step=50,
             help="Filtra recetas por total de calorías en este rango"
         )
 
-        # Un único botón
         submitted = st.form_submit_button("Iniciar búsqueda")
 
-    # Lógica de la búsqueda
     if submitted:
         st.session_state["pagina"] = 0
         st.session_state.selected_ingredients = temp_selected_ingredients
-        # Si no hay ingredientes => cargamos TODAS las recetas y filtramos
         if not st.session_state.selected_ingredients:
-            # 1. Obtenemos todas las recetas en [min_cal, max_cal]
             data_cal = (
                 supabase.table("recipes")
                 .select("id, name_es, url, calories, proteins, fats, carbs, servings, img_url")
@@ -408,14 +369,10 @@ with tab_recom:
                 .execute()
                 .data
             )
-            # 2. Filtramos por tags => supongamos un helper
             filtered = filter_by_tags(supabase, data_cal, selected_tag_names, tag_data)
-            # 3. Barajamos
             random.shuffle(filtered)
             st.session_state["recipe_data"] = filtered
-
         else:
-            # Sí hay ingredientes => get_filtered_recommendations
             es_to_en_ings = [translate_es_en(ing).strip().lower() for ing in st.session_state.selected_ingredients]
             df = get_filtered_recommendations(
                 ingredients=" ".join(es_to_en_ings),
@@ -441,19 +398,13 @@ with tab_recom:
                 for rid in recipe_ids:
                     if rid in result_map:
                         ordered_recipe_data.append(result_map[rid])
+                st.session_state["recipe_data"] = ordered_recipe_data
 
-                # Sobrescribimos
-                rec_info = ordered_recipe_data
-                st.session_state["recipe_data"] = rec_info
-
-
-    # Mostramos st.session_state["recipe_data"]
     recipe_data = st.session_state["recipe_data"]
 
     if not recipe_data:
         st.info("No se encontraron recetas o no has pulsado 'Iniciar búsqueda'.")
     else:
-        # Paginación
         p = st.session_state["pagina"]
         recetas_por_pagina = 5
         total_paginas = (len(recipe_data) - 1) // recetas_por_pagina + 1
@@ -474,7 +425,6 @@ with tab_recom:
                     f"👤 {recipe['servings']} p"
                 )
                 with st.expander("📜 Ver detalles"):
-                    # Contenedor flex con imagen + tabla
                     flex_css = """
                     <style>
                     .recipe-flex-container {
@@ -555,7 +505,6 @@ with tab_recom:
                     """
                     st.markdown(flex_html, unsafe_allow_html=True)
 
-                    # Pasos
                     steps_data = (
                         supabase.table("steps")
                         .select("description")
@@ -570,17 +519,14 @@ with tab_recom:
                         steps_list = [part.strip() for part in raw_parts if part.strip()]
                         for i, step in enumerate(steps_list, start=1):
                             st.markdown(f"* {step}.")
-
-            # Paginación
+                            
             col1, col2, col3 = st.columns([2,1,2])
             with col1:
                 st.markdown("<div style='text-align:right;'>", unsafe_allow_html=True)
                 if p > 0:
                     if st.button("⬅ Anterior"):
                         st.session_state["pagina"] -= 1
-                        # st.rerun()
                 st.markdown("</div>", unsafe_allow_html=True)
-
             with col2:
                 st.markdown(
                     f"""
@@ -590,12 +536,9 @@ with tab_recom:
                     """,
                     unsafe_allow_html=True
                 )
-
-
             with col3:
                 st.markdown("<div style='text-align:right;'>", unsafe_allow_html=True)
                 if p < total_paginas - 1:
                     if st.button("Siguiente ➡"):
                         st.session_state["pagina"] += 1
-                        # st.rerun()
                 st.markdown("</div>", unsafe_allow_html=True)
