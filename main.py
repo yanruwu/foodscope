@@ -45,14 +45,10 @@ def filter_by_tags(supabase, recipe_list, selected_tag_names, tag_data):
 # CONFIGURACIÓN DE STREAMLIT
 # ====================================================
 st.set_page_config(page_title="FoodScope - Identifica ingredientes y descubre recetas",
-                    page_icon="🍽️",
+                    page_icon="🧀",
                     layout="wide"
 )
 
-favicon_html = """
-    <link rel="icon" href="logo.png" type="image/x-icon">
-"""
-st.markdown(favicon_html, unsafe_allow_html=True)
 
 meta_description = """
     <meta name="description" content="Explora ingredientes y encuentra recetas con FoodScope. Tu asistente inteligente para identificar productos y mejorar tu cocina.">
@@ -151,7 +147,7 @@ footer {
 /* Tabs en oscuro, tab activa en naranja */
 [data-testid="stHorizontalBlock"] > div {
     border: none !important;
-    background-color: #1F1F1F !important;
+    background-color: transparent !important;
 }
 div [data-testid="stHorizontalBlock"] button[kind="tab"] {
     background-color: transparent !important;
@@ -399,13 +395,14 @@ with tab_recom:
 
     # Lógica de la búsqueda
     if submitted:
+        st.session_state["pagina"] = 0
         st.session_state.selected_ingredients = temp_selected_ingredients
         # Si no hay ingredientes => cargamos TODAS las recetas y filtramos
         if not st.session_state.selected_ingredients:
             # 1. Obtenemos todas las recetas en [min_cal, max_cal]
             data_cal = (
                 supabase.table("recipes")
-                .select("id, name_es, url, calories, proteins, fats, carbs, img_url")
+                .select("id, name_es, url, calories, proteins, fats, carbs, servings, img_url")
                 .gte("calories", min_cal)
                 .lte("calories", max_cal)
                 .execute()
@@ -434,7 +431,7 @@ with tab_recom:
                 recipe_ids = list(df["recipe_id"])
                 rec_info = (
                     supabase.table("recipes")
-                    .select("id, name_es, url, calories, proteins, fats, carbs, img_url")
+                    .select("id, name_es, url, calories, proteins, fats, carbs, servings, img_url")
                     .in_("id", recipe_ids)
                     .execute()
                     .data
@@ -449,7 +446,6 @@ with tab_recom:
                 rec_info = ordered_recipe_data
                 st.session_state["recipe_data"] = rec_info
 
-        # st.session_state["pagina"] = 0
 
     # Mostramos st.session_state["recipe_data"]
     recipe_data = st.session_state["recipe_data"]
@@ -474,7 +470,8 @@ with tab_recom:
                     f"🔥 {round(recipe['calories'], 1)} kcal  |  "
                     f"🥩 {round(recipe['proteins'], 1)} g  |  "
                     f"🥑 {round(recipe['fats'], 1)} g  |  "
-                    f"🌾 {round(recipe['carbs'], 1)} g"
+                    f"🌾 {round(recipe['carbs'], 1)} g  |  " 
+                    f"👤 {recipe['servings']} p"
                 )
                 with st.expander("📜 Ver detalles"):
                     # Contenedor flex con imagen + tabla
@@ -518,7 +515,7 @@ with tab_recom:
                     table_html = """
                     <table class="ingredient-table">
                       <thead>
-                        <tr><th>Ingrediente</th><th>Cantidad</th></tr>
+                        <tr><th>Ingrediente</th><th>Cantidad</th><th>Precio</th></tr>
                       </thead>
                       <tbody>
                     """
@@ -528,13 +525,14 @@ with tab_recom:
 
                         ing_data = (
                             supabase.table("ingredients")
-                            .select("name_es")
+                            .select("name_es", "price_mercadona")
                             .eq("id", ingredient_id)
                             .execute()
                             .data
                         )
                         if ing_data:
                             name_es = ing_data[0]["name_es"].capitalize()
+                            price_mercadona = ing_data[0]["price_mercadona"] if ing_data[0]["price_mercadona"] else "❔"
                         else:
                             name_es = "Desconocido"
 
@@ -542,7 +540,7 @@ with tab_recom:
                             f'<a href="https://soysuper.com/search?q={name_es}" '
                             f'style="color:orange;" target="_blank">{name_es}</a>'
                         )
-                        table_html += f"<tr><td>{link_html}</td><td>{quantity} g</td></tr>"
+                        table_html += f"<tr><td>{link_html}</td><td>{quantity} g</td><td>{price_mercadona} €</td></tr>"
                     table_html += "</tbody></table>"
 
                     flex_html = f"""
@@ -585,9 +583,14 @@ with tab_recom:
 
             with col2:
                 st.markdown(
-                    f"<p style='text-align:center; font-size:20px;'>Página {p+1} / {total_paginas}</p>",
+                    f"""
+                    <div style="display: flex; align-items: center; justify-content: center; min-height: 70px;">
+                        <p style="text-align: center; font-size: 20px; margin: 0;">Página {p+1} / {total_paginas}</p>
+                    </div>
+                    """,
                     unsafe_allow_html=True
                 )
+
 
             with col3:
                 st.markdown("<div style='text-align:right;'>", unsafe_allow_html=True)

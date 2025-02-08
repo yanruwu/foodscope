@@ -30,7 +30,7 @@ def preprocess_ingredients(df):
     """
     Agrupa los ingredientes por receta y los convierte en un conjunto único para evitar duplicados.
     """
-    df = df.groupby("recipe_id")["ingredient_name"].apply(lambda x: " ".join(set(x))).reset_index()
+    df = df.groupby("recipe_id")["ingredient_name"].apply(lambda x: " ".join(set(" ".join(x).split()))).reset_index()
     return df
 
 def vectorize_ingredients(recipe_ingredients):
@@ -165,7 +165,7 @@ def get_filtered_recommendations(ingredients, url, key, health_labels, min_calor
     
     # Get initial recommendations
     df = get_recommendations(supabase, ingredients)
-    
+
     # Filter by health labels
     if not health_labels:
         filter_label_df = df
@@ -175,4 +175,5 @@ def get_filtered_recommendations(ingredients, url, key, health_labels, min_calor
     # Filter by calories
     calories_filter = filter_calories(supabase, min_calories, max_calories)
     filtered_df = filter_label_df[filter_label_df["recipe_id"].isin(calories_filter)]
+    print(filtered_df.values)
     return filtered_df

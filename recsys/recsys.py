@@ -14,4 +14,6 @@ key = os.getenv("db_API_pass")
 
 from src.support_recsys import *
 
-print(get_filtered_recommendations("onion tomato", url, key, [], 0, 1000))
+if __name__ == "__main__":
+    ingredients = input("Introduzca una lista de ingredientes separados por espacios")
+    print(get_filtered_recommendations(ingredients, url, key, [], 0, 1000))
