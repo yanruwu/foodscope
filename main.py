@@ -67,12 +67,15 @@ meta_description = """
 st.markdown(meta_description, unsafe_allow_html=True)
 
 # ====================================================
-# CSS PERSONALIZADO (Se han eliminado las reglas globales de fondo y color)
+# CSS PERSONALIZADO
 # ====================================================
 st.markdown("""
 <style>
-/* Se han eliminado las reglas globales que fijan el fondo y el color del texto,
-   para permitir que el tema se gestione mediante el archivo config.toml. */
+/* Ocultamos el header por defecto de Streamlit para que no compita con nuestro topbar */
+header[data-testid="stHeader"] {
+    display: none;
+}
+
 
 /* Estilos personalizados para el Topbar y elementos específicos */
 .topbar {
@@ -87,13 +90,14 @@ st.markdown("""
     padding: 0.8rem 2rem;
     border-radius: 1rem;
     margin-bottom: 1rem;
+    color : white;
 }
 
 .topbar-logo {
     display: flex;
     align-items: center;
     font-weight: bold;
-    font-size: 1.3rem;
+    font-size: 1.7rem;
     /* Usamos 'inherit' para tomar el color definido por el tema */
     color: inherit;
     margin-right: auto;
@@ -115,7 +119,7 @@ st.markdown("""
     color: inherit;
     text-decoration: none;
     font-weight: 600;
-    font-size: 1rem;
+    font-size: 1.2rem;
 }
 .topbar-right a:hover {
     text-decoration: underline;
@@ -196,23 +200,41 @@ div[data-baseweb="slider"] div[role="slider"] {
 
 /* Target the submit button */
 button[data-testid="stBaseButton-secondaryFormSubmit"] {
-    background-color: red !important;
+    background-color: #F26722 !important;
     color: white !important;
     border-radius: 8px !important;
-    border: 2px solid darkred !important;
+    border: 2px solid #fab582 !important;
 }
 
 button[data-testid="stBaseButton-secondaryFormSubmit"]:hover {
-    background-color: darkred !important;
+    background-color: #fab582 !important;
+}
+            
+
+
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<style>
+/* Aplica el fondo anaranjado pastel al contenedor del expander y a sus partes internas */
+div.stExpander[data-testid="stExpander"] details,
+div.stExpander[data-testid="stExpander"] summary,
+div.stExpander[data-testid="stExpander"] [data-testid="stExpanderDetails"] {
+    background-color: #FFE0B2 !important;
+    border: 1px solid #fab582 !important;
+    border-radius: 1rem;
 }
 
-/* Expander */
-.st-expander {
-    background-color: inherit !important;
-    border: 1px solid #FFA766 !important;
+/* Si deseas cambiar también el color del texto dentro del expander, puedes agregar: */
+div.stExpander[data-testid="stExpander"] p,
+div.stExpander[data-testid="stExpander"] span,
+div.stExpander[data-testid="stExpander"] a {
+    color: #000000 !important;
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 # ====================================================
 # CONEXIÓN SUPABASE Y SESIÓN
@@ -424,7 +446,7 @@ with tab_recom:
                     f"🌾 {round(recipe['carbs'], 1)} g  |  " 
                     f"👤 {recipe['servings']} p"
                 )
-                with st.expander("📜 Ver detalles"):
+                with st.expander("📋 **Ver detalles**"):
                     flex_css = """
                     <style>
                     .recipe-flex-container {
@@ -448,7 +470,11 @@ with tab_recom:
                         padding: 0.5rem 1rem;
                     }
                     .ingredient-table th {
-                        background-color: #1F1F1F;
+                        background-color: #FCE4D6;
+                    }
+
+                    .ingredient-table td {
+                        background-color: #FFF3E0;
                     }
                     </style>
                     """
