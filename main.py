@@ -513,7 +513,7 @@ with tab_recom:
                             name_es = "Desconocido"
 
                         link_html = (
-                            f'<a href="https://soysuper.com/search?q={name_es}" '
+                            f'<a href="https://tienda.mercadona.es/search-results?query={name_es}" '
                             f'style="color:orange;" target="_blank">{name_es}</a>'
                         )
                         table_html += f"<tr><td>{link_html}</td><td>{quantity} g</td><td>{price_mercadona} €</td></tr>"
