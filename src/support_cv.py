@@ -4,6 +4,7 @@ import torch
 from PIL import Image
 import sys
 import numpy as np
+import gc
 
 sys.path.append(r'GroundingDINO')
 
@@ -182,53 +183,51 @@ def remote_feed():
     cap.release()
     cv2.destroyAllWindows()
 
-def image_feed(img):
-    # Define la ruta base de tu proyecto
+if 'MODEL_INITIALIZED' not in globals():
     BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-
-    # Inicializa el modelo
     model, device = initialize_model(BASE_DIR)
+    MODEL_INITIALIZED = True
 
-    # Parámetros para la detección
-    TEXT_PROMPT =  '''
-        potato, onion, garlic, carrot, tomato, lettuce, spinach, cucumber, zucchini, broccoli,
-        cauliflower, apple, banana, orange, lemon, grape, pear, peach, plum, watermelon, pineapple,
-        strawberry, blueberry, raspberry, blackberry, mango, kiwi, avocado, ginger, parsley, cilantro,
-        mint, rosemary, thyme, basil, bay leaf, chili pepper, mushroom, green bean, pea, brussels sprout,
-        kale, cabbage, celery, asparagus, leek, eggplant, radish, pumpkin, butternut squash,
-        okra, artichoke, corn, fig, date, papaya, lime, coconut, melon,
-        cantaloupe, peanut, almond, walnut, chia seed, sunflower seed, sesame seed, bread, pasta,
-        chicken, beef, pork, egg, ham, tofu, milk, yogurt, cheese, butter, tuna, salmon,
-        honey, jam, peanut butter, coffee, tea, chocolate, 
-        rice, lentil, chickpeas, black bean, bell pepper, sausage
-        '''
-    BOX_THRESHOLD = 0.30
-    TEXT_THRESHOLD = 0.25
+# Define constantes globales para la detección
+TEXT_PROMPT =  '''
+    potato , onion , garlic , carrot , tomato , lettuce , spinach , cucumber , zucchini , broccoli ,
+    cauliflower , apple , banana , orange , lemon , grape , pear , peach , plum , watermelon , pineapple ,
+    strawberry , blueberry , raspberry , blackberry , mango , kiwi , avocado , ginger , parsley , cilantro ,
+    mint , rosemary , thyme , basil , bay leaf , chili pepper , mushroom , green bean , pea , brussels sprout ,
+    kale , cabbage , celery , asparagus , leek , eggplant , radish , pumpkin , butternut squash ,
+    okra , artichoke , corn , fig , date , papaya , lime , cherry , coconut , melon ,
+    cantaloupe , peanut , almond , walnut , chia seed , sunflower seed , sesame seed , bread , pasta ,
+    chicken , beef , pork , egg , ham , tofu , milk , yogurt , cheese , butter , canned tuna , canned salmon ,
+    crushed tomato , canned tomato , honey , jam , peanut butter , coffee , tea , chocolate
+    '''
+BOX_THRESHOLD = 0.30
+TEXT_THRESHOLD = 0.25
 
-
-    frame_source, captured_frame = transform_image(img)
-
-    # Realizar predicción con el modelo
-    boxes, logits, phrases = predict(
-        model=model,
-        image=captured_frame,
-        caption=TEXT_PROMPT,
-        box_threshold=BOX_THRESHOLD,
-        text_threshold=TEXT_THRESHOLD,
-        device=device
-    )
-
-    # Anotar el frame original (en RGB)
-    annotated_frame = annotate(
-        image_source=frame_source,
-        boxes=boxes,
-        logits=logits,
-        phrases=phrases
-    )
-
-    # Guardar la imagen anotada
-    # output_path = os.path.join(BASE_DIR, "computervision", "live_annotated_image.jpg")
-    # cv2.imwrite(output_path, annotated_frame)
+def image_feed(img):
+    """
+    Procesa una imagen para detectar ingredientes utilizando el modelo preentrenado.
+    Retorna la imagen anotada y las frases detectadas.
+    """
+    # Convierte la imagen (suponiendo que 'img' es un objeto obtenido de Streamlit, por ejemplo, st.camera_input)
+    # usando una función de transformación definida (transform_image)
+    image_source, captured_frame = transform_image(img)
     
-    print(f"Predicción completada. Frases detectadas: {phrases}")
+    # Ejecuta la inferencia en un bloque sin gradientes
+    with torch.no_grad():
+        boxes, logits, phrases = predict(
+            model=model,
+            image=captured_frame,
+            caption=TEXT_PROMPT,
+            box_threshold=BOX_THRESHOLD,
+            text_threshold=TEXT_THRESHOLD,
+            device=device
+        )
+    
+    # Si se está utilizando GPU, liberar la memoria no utilizada
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    
+    # Forzar la recolección de basura
+    gc.collect()
+    
     return phrases

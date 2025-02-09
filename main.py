@@ -337,7 +337,7 @@ else:
 # =============================
 # TAB RECONOCIMIENTO
 # =============================
-# from memory_profiler import memory_usage
+from memory_profiler import memory_usage
 
 with tab_reco:
     st.subheader("📸 Detecta tus ingredientes")
@@ -350,12 +350,12 @@ with tab_reco:
         if bytes_data != st.session_state.last_uploaded_image:
             try:
                 image = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
-                # mem_before = memory_usage()[0]
+                mem_before = memory_usage()[0]
                 detection_result = image_feed(image)  # Asume que da lista en inglés
-                # mem_after = memory_usage()[0]
-                # st.write("Memoria antes: {:.2f} MiB".format(mem_before))
-                # st.write("Memoria después: {:.2f} MiB".format(mem_after))
-                # st.write("Incremento: {:.2f} MiB".format(mem_after - mem_before))
+                mem_after = memory_usage()[0]
+                st.write("Memoria antes: {:.2f} MiB".format(mem_before))
+                st.write("Memoria después: {:.2f} MiB".format(mem_after))
+                st.write("Incremento: {:.2f} MiB".format(mem_after - mem_before))
                 # Traducir a ES
                 detection_checked_ind = supabase.table("ingredients").select("name").in_("name", detection_result).execute().data
                 l_ind = {a["name"] for a in detection_checked_ind}
