@@ -1,7 +1,8 @@
 # User added
 .env
 SAM/
-recetas_scrapper/
+data/
+EDA/
 README_potencial.md
 *.ipynb
 api.py
