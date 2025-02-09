@@ -196,7 +196,7 @@ def image_feed(img):
         strawberry, blueberry, raspberry, blackberry, mango, kiwi, avocado, ginger, parsley, cilantro,
         mint, rosemary, thyme, basil, bay leaf, chili pepper, mushroom, green bean, pea, brussels sprout,
         kale, cabbage, celery, asparagus, leek, eggplant, radish, pumpkin, butternut squash,
-        okra, artichoke, corn, fig, date, papaya, lime, cherry, coconut, melon,
+        okra, artichoke, corn, fig, date, papaya, lime, coconut, melon,
         cantaloupe, peanut, almond, walnut, chia seed, sunflower seed, sesame seed, bread, pasta,
         chicken, beef, pork, egg, ham, tofu, milk, yogurt, cheese, butter, tuna, salmon,
         honey, jam, peanut butter, coffee, tea, chocolate, 
@@ -227,8 +227,8 @@ def image_feed(img):
     )
 
     # Guardar la imagen anotada
-    output_path = os.path.join(BASE_DIR, "computervision", "live_annotated_image.jpg")
-    cv2.imwrite(output_path, annotated_frame)
+    # output_path = os.path.join(BASE_DIR, "computervision", "live_annotated_image.jpg")
+    # cv2.imwrite(output_path, annotated_frame)
     
     print(f"Predicción completada. Frases detectadas: {phrases}")
     return phrases
