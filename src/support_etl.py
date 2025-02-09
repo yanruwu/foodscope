@@ -9,14 +9,15 @@ import sys
 sys.path.append("..")
 dotenv.load_dotenv()
 
-from deep_translator import GoogleTranslator
+from deep_translator import GoogleTranslator, DeeplTranslator
 from supabase import create_client, Client
+deepl_key = os.getenv("deepl_key")
 
 def translate_es_en(text):
-    return GoogleTranslator(source='es', target='en').translate(text)
+    return DeeplTranslator(api_key= deepl_key, source='es', target='en', use_free_api=True).translate(text)
 
 def translate_en_es(text):
-    return GoogleTranslator(source='en', target='es').translate(text)
+    return DeeplTranslator(api_key= deepl_key, source='en', target='es', use_free_api=True).translate(text)
 
 def get_nutrients(ing_list, serving_size):
     """

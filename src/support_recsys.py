@@ -175,5 +175,5 @@ def get_filtered_recommendations(ingredients, url, key, health_labels, min_calor
     # Filter by calories
     calories_filter = filter_calories(supabase, min_calories, max_calories)
     filtered_df = filter_label_df[filter_label_df["recipe_id"].isin(calories_filter)]
-    print(filtered_df.values)
+    # print(filtered_df.values)
     return filtered_df

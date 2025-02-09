@@ -191,16 +191,16 @@ def image_feed(img):
 
     # Parámetros para la detección
     TEXT_PROMPT =  '''
-        potato , onion , garlic , carrot , tomato , lettuce , spinach , cucumber , zucchini , broccoli ,
-        cauliflower , apple , banana , orange , lemon , grape , pear , peach , plum , watermelon , pineapple ,
-        strawberry , blueberry , raspberry , blackberry , mango , kiwi , avocado , ginger , parsley , cilantro ,
-        mint , rosemary , thyme , basil , bay leaf , chili pepper , mushroom , green bean , pea , brussels sprout ,
-        kale , cabbage , celery , asparagus , leek , eggplant , radish , pumpkin , butternut squash ,
-        okra , artichoke , corn , fig , date , papaya , lime , cherry , coconut , melon ,
-        cantaloupe , peanut , almond , walnut , chia seed , sunflower seed , sesame seed , bread , pasta ,
-        chicken , beef , pork , egg , ham , tofu , milk , yogurt , cheese , butter , canned tuna , canned salmon ,
-        crushed tomato , canned tomato , honey , jam , peanut butter , coffee , tea , chocolate , 
-        rice , lentil , chickpeas , black bean , bell pepper , sausage , 
+        potato, onion, garlic, carrot, tomato, lettuce, spinach, cucumber, zucchini, broccoli,
+        cauliflower, apple, banana, orange, lemon, grape, pear, peach, plum, watermelon, pineapple,
+        strawberry, blueberry, raspberry, blackberry, mango, kiwi, avocado, ginger, parsley, cilantro,
+        mint, rosemary, thyme, basil, bay leaf, chili pepper, mushroom, green bean, pea, brussels sprout,
+        kale, cabbage, celery, asparagus, leek, eggplant, radish, pumpkin, butternut squash,
+        okra, artichoke, corn, fig, date, papaya, lime, cherry, coconut, melon,
+        cantaloupe, peanut, almond, walnut, chia seed, sunflower seed, sesame seed, bread, pasta,
+        chicken, beef, pork, egg, ham, tofu, milk, yogurt, cheese, butter, tuna, salmon,
+        honey, jam, peanut butter, coffee, tea, chocolate, 
+        rice, lentil, chickpeas, black bean, bell pepper, sausage
         '''
     BOX_THRESHOLD = 0.30
     TEXT_THRESHOLD = 0.25

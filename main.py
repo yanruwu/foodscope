@@ -12,6 +12,10 @@ from src.support_cv import image_feed
 from src.support_recsys import connect_supabase, get_filtered_recommendations
 from src.support_etl import translate_es_en, translate_en_es
 
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 
 def filter_by_tags(supabase, recipe_list, selected_tag_names, tag_data):
     if not selected_tag_names:
@@ -311,13 +315,13 @@ st.markdown("### Usa tu cámara para obtener las mejores recetas!")
 # DEFINIMOS TABS Y “HACK” PARA ACTIVAR LA SEGUNDA
 # ====================================================
 if st.session_state.active_tab_idx == 0:
-    tab_names = ["Reconocimiento", "Recomendaciones"]
+    tab_names = ["Reconocimiento", "Recomendaciones", "Stats"]
     tabs_obj = st.tabs(tab_names)
-    tab_reco, tab_recom = tabs_obj[0], tabs_obj[1]
+    tab_reco, tab_recom, tab_stats = tabs_obj[0], tabs_obj[1], tabs_obj[2]
 else:
-    tab_names = ["Recomendaciones", "Reconocimiento"]
+    tab_names = ["Recomendaciones", "Reconocimiento", "Stats"]
     tabs_obj = st.tabs(tab_names)
-    tab_recom, tab_reco = tabs_obj[0], tabs_obj[1]
+    tab_recom, tab_reco, tabs_stats = tabs_obj[0], tabs_obj[1], tabs_obj[2]
 
 # =============================
 # TAB RECONOCIMIENTO
@@ -335,21 +339,30 @@ with tab_reco:
                 image = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
                 detection_result = image_feed(image)  # Asume que da lista en inglés
                 # Traducir a ES
-                detected_es = [translate_en_es(e) for e in set(detection_result)]
-                st.session_state.detection_list = detected_es
+                detection_checked_ind = supabase.table("ingredients").select("name").in_("name", detection_result).execute().data
+                l_ind = {a["name"] for a in detection_checked_ind}
+                detection_checked_coll = supabase.table("ingredients").select("name").in_("name", [p for l in detection_result for p in l.split()]).execute().data
+                l_coll = {b["name"] for b in detection_checked_coll}
+                elementos_unicos = l_ind | l_coll
+
+                detected_es = [translate_en_es(e) for e in elementos_unicos]
+                if not st.session_state.detection_list:
+                    st.session_state.detection_list = detected_es
+                else:
+                    st.session_state.detection_list += detected_es
+                    st.session_state.detection_list = list(set(st.session_state.detection_list))
                 st.session_state.last_uploaded_image = bytes_data
             except Exception as e:
                 st.error(f"Error al procesar la imagen: {e}")
 
     st.write("**Ingredientes detectados (puedes editarlos en la otra pestaña):**")
     st.write(", ".join(st.session_state.detection_list) or "Ninguno aún.")
-
 # =============================
 # TAB RECOMENDACIONES
 # =============================
 with tab_recom:
     st.title("🥘 Recomendaciones")
-
+    
     with st.form("search_form"):
         temp_selected_ingredients = set(
             stt.st_tags(
@@ -380,6 +393,8 @@ with tab_recom:
         submitted = st.form_submit_button("Iniciar búsqueda")
 
     if submitted:
+        enable = False
+        st.session_state.detection_list = []
         st.session_state["pagina"] = 0
         st.session_state.selected_ingredients = temp_selected_ingredients
         if not st.session_state.selected_ingredients:
@@ -396,6 +411,23 @@ with tab_recom:
             st.session_state["recipe_data"] = filtered
         else:
             es_to_en_ings = [translate_es_en(ing).strip().lower() for ing in st.session_state.selected_ingredients]
+            for i in es_to_en_ings:
+                searched_id = supabase.table("searched_ingredient").select("id").eq("name", i).execute().data
+                if searched_id:
+                    searched_id = searched_id[0]["id"]
+                    count = supabase.table("searched_ingredient").select("count").eq("id", searched_id).execute().data[0]["count"]
+                    new_count = count+1
+                    supabase.table("searched_ingredient").update({"count" : new_count}).eq("id", searched_id).execute()
+                else:
+                    try:
+                        iid = supabase.table("ingredients").select("id").eq("name_en", i).execute().data[0]["id"]
+                    except Exception as e:
+                        iid = None
+                        print(e)
+                    finally:
+                        supabase.table("searched_ingredient").insert({"name" : i, "ingredient_id" : iid, "count" : 1}).execute()
+
+        
             df = get_filtered_recommendations(
                 ingredients=" ".join(es_to_en_ings),
                 url=url,
@@ -568,3 +600,34 @@ with tab_recom:
                     if st.button("Siguiente ➡"):
                         st.session_state["pagina"] += 1
                 st.markdown("</div>", unsafe_allow_html=True)
+
+
+with tab_stats:
+    def get_popular_searches(n_top=None):
+        counts = pd.DataFrame(supabase.table("searched_ingredient").select("name", "count").execute().data).sort_values("count", ascending=False)
+        if n_top:
+            counts = counts.head(n_top)
+        sns.set_theme(context="talk", style="whitegrid", rc={'axes.facecolor': '#FFF8E1', 'figure.facecolor': '#FFF8E1'})
+
+        # Crear la figura
+        fig, ax = plt.subplots(dpi=100, figsize=(12, 8))
+        colors = sns.color_palette("Oranges", len(counts))
+        bars = sns.barplot(data=counts, x="count", y="name", ax=ax, palette = colors, edgecolor="black", linewidth=1.2)
+
+        for bar in bars.containers:
+            bars.bar_label(bar, fmt='%d', label_type='edge', padding=5, fontsize=14, color='black', weight='bold')
+
+        ax.set_title("Búsquedas de Ingredientes", fontdict={"fontsize": 24, "fontweight": "bold"}, pad=15)
+        ax.set_xlabel("Número de Búsquedas", fontsize=16, fontweight="bold")
+        ax.set_ylabel("Ingrediente", fontsize=16, fontweight="bold")
+
+        plt.xticks(fontsize=12, fontweight="bold")
+        plt.yticks(fontsize=12)
+        return fig
+    
+    c1, _ = st.columns(2)
+    with c1:
+        st.write("Veamos el volumen de búsqueda de los ingredientes! 🥕")
+        n_entries = st.number_input(label="Máximo de entradas que mostrar", min_value=1)
+    fig = get_popular_searches(n_entries)
+    st.pyplot(fig, clear_figure=True)
