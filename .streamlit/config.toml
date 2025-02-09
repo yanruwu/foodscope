@@ -1,5 +1,6 @@
 [server]
 runOnSave = false
+enableWatchdog = false
 
 [theme]
 base = "light"

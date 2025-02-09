@@ -1,3 +1,14 @@
+import torch
+# Guarda la función original
+_original_getattr = torch.classes.__getattr__
+
+def safe_getattr(name):
+    if name == "__path__":
+        # Devuelve una lista vacía o algún valor dummy
+        return []
+    return _original_getattr(name)
+
+torch.classes.__getattr__ = safe_getattr
 import streamlit as st
 import os
 import cv2
