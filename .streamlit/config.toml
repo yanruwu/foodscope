@@ -1,6 +1,6 @@
 [server]
 runOnSave = false
-enableWatchdog = false
+fileWatcherType = "none"
 
 [theme]
 base = "light"
